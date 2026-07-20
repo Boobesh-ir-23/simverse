@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Simverse Phase I — Buck, Boost, Buck-Boost, NIBB, semi and full controlled converter design calculators for ideal CCM equations and simulation settings." />
+  <title>Simverse Phase I — Converter Design Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23181818'/%3E%3Cpath d='M8 22 L16 8 L24 22 Z' fill='none' stroke='%23da291c' stroke-width='2'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="top-nav">
+    <div class="nav-inner">
+      <a class="brand" href="/" aria-label="Simverse Phase I home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Simverse Phase I</span>
+      </a>
+      <p class="nav-tagline" id="nav-tagline">CCM Buck &amp; Boost Design</p>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow" id="hero-eyebrow">Power Electronics · Continuous Conduction Mode</p>
+      <h1 class="hero-title">Converter Design Tool</h1>
+      <p class="hero-lead" id="hero-lead">
+        Size inductors, capacitors, and load for ideal Buck and Boost converters.
+        Get Simulink Pulse Generator settings instantly.
+      </p>
+
+      <div class="topology-toggle" role="group" aria-label="Converter topology">
+        <button type="button" class="topo-btn is-active" data-topology="buck" id="btn-buck" aria-pressed="true">
+          Buck
+        </button>
+        <button type="button" class="topo-btn" data-topology="boost" id="btn-boost" aria-pressed="false">
+          Boost
+        </button>
+        <button type="button" class="topo-btn" data-topology="buckboost" id="btn-buckboost" aria-pressed="false">
+          Buck-Boost
+        </button>
+        <button type="button" class="topo-btn" data-topology="nibb" id="btn-nibb" aria-pressed="false">
+          NIBB
+        </button>
+        <button type="button" class="topo-btn" data-topology="semi" id="btn-semi" aria-pressed="false">
+          Semi
+        </button>
+        <button type="button" class="topo-btn" data-topology="full" id="btn-full" aria-pressed="false">
+          Full
+        </button>
+        <button type="button" class="topo-btn" data-topology="charge" id="btn-charge" aria-pressed="false">
+          Charging
+        </button>
+      </div>
+    </section>
+
+    <!-- ===================== DC–DC (Buck / Boost / BB / NIBB) ===================== -->
+    <div id="view-dcdc" class="circuit-view">
+      <div class="layout">
+        <section class="panel panel-inputs" aria-labelledby="inputs-heading">
+          <div class="panel-head">
+            <h2 id="inputs-heading" class="panel-title">Design Inputs</h2>
+            <span class="badge" id="topology-badge">Buck</span>
+          </div>
+
+          <form id="design-form" class="input-grid" novalidate>
+            <label class="field">
+              <span class="field-label">Input Voltage <span class="sym">V<sub>in</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="vin" name="vin" value="24" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Output Voltage <span class="sym">V<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="vout" name="vout" value="12" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Output Power <span class="sym">P<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="pout" name="pout" value="50" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">W</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Switching Frequency <span class="sym">f<sub>s</sub></span></span>
+              <div class="field-control field-control-split">
+                <input type="number" id="fs" name="fs" value="100" min="0" step="any" inputmode="decimal" required />
+                <select id="fs-unit" name="fs-unit" aria-label="Frequency unit">
+                  <option value="khz" selected>kHz</option>
+                  <option value="hz">Hz</option>
+                </select>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Inductor Current Ripple <span class="sym">ΔI<sub>L</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="dil" name="dil" value="0.5" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">A</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Output Voltage Ripple <span class="sym">ΔV<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="dvo" name="dvo" value="0.1" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
+              </div>
+            </label>
+          </form>
+
+          <div class="sub-toggle-wrap" id="nibb-drive-wrap" hidden>
+            <span class="sub-toggle-label">NIBB drive</span>
+            <div class="topology-toggle topology-toggle-sm" role="group" aria-label="NIBB drive strategy">
+              <button type="button" class="topo-btn is-active" id="btn-nibb-multi" data-nibb-drive="multi" aria-pressed="true">
+                Multi-mode
+              </button>
+              <button type="button" class="topo-btn" id="btn-nibb-simul" data-nibb-drive="simul" aria-pressed="false">
+                Both PWM
+              </button>
+            </div>
+          </div>
+
+          <div id="validation-msg" class="validation" role="alert" hidden></div>
+
+          <p class="hint" id="dcdc-hint">
+            Calculations update as you type. Ideal CCM equations — no losses, continuous conduction.
+          </p>
+        </section>
+
+        <div class="results-stack" id="results-dcdc">
+          <section class="panel panel-card panel-nibb-mode" id="nibb-mode-panel" aria-labelledby="nibb-mode-heading" hidden>
+            <div class="panel-head">
+              <h2 id="nibb-mode-heading" class="panel-title">NIBB Drive &amp; Mode</h2>
+              <span class="badge" id="nibb-mode-badge">—</span>
+            </div>
+            <p class="simulink-note" id="nibb-mode-reason">—</p>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="nibb-sw-buck">—</p>
+                <p class="spec-label">Buck switch S<sub>1</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="nibb-sw-boost">—</p>
+                <p class="spec-label">Boost switch S<sub>2</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="nibb-sw-pwm">—</p>
+                <p class="spec-label">PWM device</p>
+              </div>
+            </div>
+            <p class="hint" id="nibb-alt-hint" style="margin-top: var(--sm); margin-bottom: 0;">
+              <!-- alternate strategy one-liner filled by JS -->
+            </p>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="components-heading">
+            <h2 id="components-heading" class="panel-title">Core Components</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value" id="out-L">—</p>
+                <p class="spec-label">Inductance L</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="out-C">—</p>
+                <p class="spec-label">Capacitance C</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="out-R">—</p>
+                <p class="spec-label">Load Resistance R</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="current-heading">
+            <h2 id="current-heading" class="panel-title">Current Specs</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="out-Io">—</p>
+                <p class="spec-label">Output Current I<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="out-Iin">—</p>
+                <p class="spec-label">Input Current I<sub>in</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="out-D">—</p>
+                <p class="spec-label" id="out-D-label">Duty Cycle D</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card panel-simulink" aria-labelledby="simulink-heading">
+            <div class="panel-head">
+              <h2 id="simulink-heading" class="panel-title">Simulink Pulse Settings</h2>
+              <span class="badge badge-soft" id="dcdc-simulink-badge">Pulse Generator</span>
+            </div>
+            <p class="simulink-note" id="dcdc-simulink-note">
+              Map these values into a Simulink <strong>Pulse Generator</strong> block for open-loop switching.
+            </p>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="out-period">—</p>
+                <p class="spec-label">Period (secs)</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="out-pw">—</p>
+                <p class="spec-label">Pulse Width (%)</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="out-amp">1</p>
+                <p class="spec-label">Amplitude</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== Semi-converter ===================== -->
+    <div id="view-semi" class="circuit-view" hidden>
+      <div class="layout">
+        <section class="panel panel-inputs" aria-labelledby="semi-inputs-heading">
+          <div class="panel-head">
+            <h2 id="semi-inputs-heading" class="panel-title">Design Inputs</h2>
+            <span class="badge" id="semi-badge">Symmetrical</span>
+          </div>
+
+          <div class="sub-toggle-wrap">
+            <span class="sub-toggle-label">Load type</span>
+            <div class="topology-toggle topology-toggle-sm" role="group" aria-label="Load type">
+              <button type="button" class="topo-btn is-active" id="btn-load-r" data-load="r" aria-pressed="true">R</button>
+              <button type="button" class="topo-btn" id="btn-load-rl" data-load="rl" aria-pressed="false">RL</button>
+            </div>
+          </div>
+
+          <form id="semi-form" class="input-grid" novalidate>
+            <label class="field">
+              <span class="field-label">Supply Voltage (RMS) <span class="sym">V<sub>s</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="vs" name="vs" value="230" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Supply Frequency <span class="sym">f</span></span>
+              <div class="field-control">
+                <input type="number" id="f-ac" name="f-ac" value="50" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">Hz</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Firing Angle <span class="sym">α</span></span>
+              <div class="field-control">
+                <input type="number" id="alpha" name="alpha" value="30" min="0" max="180" step="any" inputmode="decimal" required />
+                <span class="unit">°</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Load Resistance <span class="sym">R</span></span>
+              <div class="field-control">
+                <input type="number" id="load-r" name="load-r" value="10" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">Ω</span>
+              </div>
+            </label>
+
+            <label class="field" id="field-load-l">
+              <span class="field-label">Load Inductance <span class="sym">L</span></span>
+              <div class="field-control field-control-split">
+                <input type="number" id="load-l" name="load-l" value="50" min="0" step="any" inputmode="decimal" />
+                <select id="load-l-unit" name="load-l-unit" aria-label="Inductance unit">
+                  <option value="mh" selected>mH</option>
+                  <option value="h">H</option>
+                  <option value="uh">µH</option>
+                </select>
+              </div>
+            </label>
+          </form>
+
+          <div id="semi-validation-msg" class="validation" role="alert" hidden></div>
+
+          <p class="hint" id="semi-hint">
+            1-φ symmetrical semi-converter (2 SCR + 2 diode). Ideal switches, continuous conduction for RL.
+          </p>
+        </section>
+
+        <div class="results-stack" id="results-semi">
+          <section class="panel panel-card" aria-labelledby="semi-voltage-heading">
+            <h2 id="semi-voltage-heading" class="panel-title">Output Voltage</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value" id="semi-out-Vo">—</p>
+                <p class="spec-label">Average V<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="semi-out-Vrms">—</p>
+                <p class="spec-label">RMS V<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value accent" id="semi-out-Vm">—</p>
+                <p class="spec-label">Peak V<sub>m</sub></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="semi-quality-heading">
+            <h2 id="semi-quality-heading" class="panel-title">Waveform Quality</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="semi-out-FF">—</p>
+                <p class="spec-label">Form Factor</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="semi-out-RF">—</p>
+                <p class="spec-label">Ripple Factor</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="semi-out-alpha">—</p>
+                <p class="spec-label">α (radians)</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card panel-simulink" aria-labelledby="semi-gate-heading">
+            <div class="panel-head">
+              <h2 id="semi-gate-heading" class="panel-title">Gate / Firing Timing</h2>
+              <span class="badge badge-soft">T<sub>1</sub> · T<sub>2</sub></span>
+            </div>
+            <p class="simulink-note">
+              Symmetrical bridge: fire <strong>T<sub>1</sub></strong> at α and <strong>T<sub>2</sub></strong> at π + α each AC cycle.
+            </p>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="semi-out-Tac">—</p>
+                <p class="spec-label">AC Period</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="semi-out-delay-t1">—</p>
+                <p class="spec-label">T<sub>1</sub> Delay</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="semi-out-delay-t2">—</p>
+                <p class="spec-label">T<sub>2</sub> Delay</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="semi-modes-heading">
+            <h2 id="semi-modes-heading" class="panel-title">Conduction Modes</h2>
+            <div class="mode-table" id="semi-mode-table" role="table" aria-label="Conduction intervals">
+              <!-- filled by JS -->
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== Full converter (Package C) ===================== -->
+    <div id="view-full" class="circuit-view" hidden>
+      <div class="layout">
+        <section class="panel panel-inputs" aria-labelledby="full-inputs-heading">
+          <div class="panel-head">
+            <h2 id="full-inputs-heading" class="panel-title">Design Inputs</h2>
+            <span class="badge" id="full-badge">4 SCR</span>
+          </div>
+
+          <div class="sub-toggle-wrap">
+            <span class="sub-toggle-label">Load type</span>
+            <div class="topology-toggle topology-toggle-sm" role="group" aria-label="Full converter load type">
+              <button type="button" class="topo-btn is-active" id="btn-full-load-r" data-load="r" aria-pressed="true">R</button>
+              <button type="button" class="topo-btn" id="btn-full-load-rl" data-load="rl" aria-pressed="false">RL</button>
+            </div>
+          </div>
+
+          <form id="full-form" class="input-grid" novalidate>
+            <label class="field">
+              <span class="field-label">Supply Voltage (RMS) <span class="sym">V<sub>s</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="full-vs" name="full-vs" value="230" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Supply Frequency <span class="sym">f</span></span>
+              <div class="field-control">
+                <input type="number" id="full-f-ac" name="full-f-ac" value="50" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">Hz</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Firing Angle <span class="sym">α</span></span>
+              <div class="field-control">
+                <input type="number" id="full-alpha" name="full-alpha" value="30" min="0" max="180" step="any" inputmode="decimal" required />
+                <span class="unit">°</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Load Resistance <span class="sym">R</span></span>
+              <div class="field-control">
+                <input type="number" id="full-load-r" name="full-load-r" value="10" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">Ω</span>
+              </div>
+            </label>
+
+            <label class="field" id="field-full-load-l">
+              <span class="field-label">Load Inductance <span class="sym">L</span></span>
+              <div class="field-control field-control-split">
+                <input type="number" id="full-load-l" name="full-load-l" value="50" min="0" step="any" inputmode="decimal" />
+                <select id="full-load-l-unit" name="full-load-l-unit" aria-label="Inductance unit">
+                  <option value="mh" selected>mH</option>
+                  <option value="h">H</option>
+                  <option value="uh">µH</option>
+                </select>
+              </div>
+            </label>
+          </form>
+
+          <div id="full-validation-msg" class="validation" role="alert" hidden></div>
+
+          <p class="hint" id="full-hint">
+            1-φ fully controlled bridge (4 SCR). Ideal switches. R load extinguishes at π; RL assumes continuous conduction.
+          </p>
+        </section>
+
+        <div class="results-stack" id="results-full">
+          <section class="panel panel-card" aria-labelledby="full-voltage-heading">
+            <div class="panel-head">
+              <h2 id="full-voltage-heading" class="panel-title">Output Voltage</h2>
+              <span class="badge badge-soft" id="full-mode-badge">Rectifier</span>
+            </div>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value" id="full-out-Vo">—</p>
+                <p class="spec-label">Average V<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="full-out-Vrms">—</p>
+                <p class="spec-label">RMS V<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value accent" id="full-out-Vm">—</p>
+                <p class="spec-label">Peak V<sub>m</sub></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="full-quality-heading">
+            <h2 id="full-quality-heading" class="panel-title">Waveform Quality</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="full-out-FF">—</p>
+                <p class="spec-label">Form Factor</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="full-out-RF">—</p>
+                <p class="spec-label">Ripple Factor</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="full-out-alpha">—</p>
+                <p class="spec-label">α (radians)</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card panel-simulink" aria-labelledby="full-gate-heading">
+            <div class="panel-head">
+              <h2 id="full-gate-heading" class="panel-title">Gate / Firing Timing</h2>
+              <span class="badge badge-soft">4 SCR</span>
+            </div>
+            <p class="simulink-note">
+              Diagonal pairs: fire <strong>T<sub>1</sub>·T<sub>2</sub></strong> at α and <strong>T<sub>3</sub>·T<sub>4</sub></strong> at π + α each AC cycle.
+            </p>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="full-out-Tac">—</p>
+                <p class="spec-label">AC Period</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="full-out-delay-pair-a">—</p>
+                <p class="spec-label">T<sub>1</sub>·T<sub>2</sub> Delay</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="full-out-delay-pair-b">—</p>
+                <p class="spec-label">T<sub>3</sub>·T<sub>4</sub> Delay</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="full-modes-heading">
+            <h2 id="full-modes-heading" class="panel-title">Conduction Modes</h2>
+            <div class="mode-table" id="full-mode-table" role="table" aria-label="Full converter conduction intervals">
+              <!-- filled by JS -->
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== Charging Circuit (AC–DC offline PSU) ===================== -->
+    <div id="view-charge" class="circuit-view" hidden>
+      <div class="layout">
+        <section class="panel panel-inputs" aria-labelledby="charge-inputs-heading">
+          <div class="panel-head">
+            <h2 id="charge-inputs-heading" class="panel-title">Design Inputs</h2>
+            <span class="badge" id="charge-badge">Charging</span>
+          </div>
+
+          <p class="simulink-note" style="margin-top: 0;">
+            Chain: <strong>230 V AC</strong> → transformer → bridge → bulk C → <strong>buck</strong> → V<sub>o</sub>
+            · 50 Hz · ideal CCM
+          </p>
+
+          <div class="sub-toggle-wrap">
+            <span class="sub-toggle-label">Intermediate spec</span>
+            <div class="topology-toggle topology-toggle-sm" role="group" aria-label="Intermediate voltage type">
+              <button type="button" class="topo-btn is-active" id="btn-charge-vbus" data-mid="vbus" aria-pressed="true">
+                DC bus
+              </button>
+              <button type="button" class="topo-btn" id="btn-charge-vsec" data-mid="vsec" aria-pressed="false">
+                Sec. AC
+              </button>
+            </div>
+          </div>
+
+          <form id="charge-form" class="input-grid" novalidate>
+            <label class="field">
+              <span class="field-label">Output Voltage <span class="sym">V<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-vo" name="ch-vo" value="12" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Output Current <span class="sym">I<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-io" name="ch-io" value="2" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">A</span>
+              </div>
+            </label>
+
+            <label class="field" id="field-ch-mid">
+              <span class="field-label" id="ch-mid-label">DC Bus Voltage <span class="sym">V<sub>bus</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-mid" name="ch-mid" value="24" min="0" step="any" inputmode="decimal" required />
+                <span class="unit" id="ch-mid-unit">V</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Switching Frequency <span class="sym">f<sub>sw</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-fsw" name="ch-fsw" value="100" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">kHz</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Inductor Ripple <span class="sym">ΔI<sub>L</sub> % of I<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-dil-pct" name="ch-dil-pct" value="20" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">%</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Output Ripple <span class="sym">ΔV<sub>o</sub> % of V<sub>o</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-dvo-pct" name="ch-dvo-pct" value="1" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">%</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Bulk Cap Ripple <span class="sym">ΔV<sub>bulk</sub> % of V<sub>bus</sub></span></span>
+              <div class="field-control">
+                <input type="number" id="ch-dvbulk-pct" name="ch-dvbulk-pct" value="10" min="0" step="any" inputmode="decimal" />
+                <span class="unit">%</span>
+              </div>
+            </label>
+          </form>
+
+          <div id="charge-validation-msg" class="validation" role="alert" hidden></div>
+
+          <p class="hint" id="charge-hint">
+            Primary fixed at 230 V RMS, 50 Hz. Ideal transformer, bridge, and CCM buck — no losses.
+          </p>
+        </section>
+
+        <div class="results-stack" id="results-charge">
+          <section class="panel panel-card" aria-labelledby="ch-xfmr-heading">
+            <h2 id="ch-xfmr-heading" class="panel-title">Transformer &amp; Rectifier</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value" id="ch-out-vsec">—</p>
+                <p class="spec-label">Secondary V<sub>s</sub> (RMS)</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="ch-out-ratio">—</p>
+                <p class="spec-label">Turns Ratio N<sub>p</sub>:N<sub>s</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value accent" id="ch-out-vm">—</p>
+                <p class="spec-label">Peak V<sub>m</sub> = √2 V<sub>s</sub></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="ch-bus-heading">
+            <h2 id="ch-bus-heading" class="panel-title">DC Bus &amp; Bulk Cap</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-vbus-nl">—</p>
+                <p class="spec-label">V<sub>bus</sub> no-load</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-vbus-load">—</p>
+                <p class="spec-label">V<sub>bus</sub> under load</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="ch-out-cbulk">—</p>
+                <p class="spec-label">Bulk Capacitor C<sub>bulk</sub></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="ch-buck-heading">
+            <h2 id="ch-buck-heading" class="panel-title">Buck Stage</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value" id="ch-out-D">—</p>
+                <p class="spec-label">Duty Cycle D</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="ch-out-L">—</p>
+                <p class="spec-label">Inductance L</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="ch-out-C">—</p>
+                <p class="spec-label">Output Cap C</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" aria-labelledby="ch-load-heading">
+            <h2 id="ch-load-heading" class="panel-title">Load &amp; Currents</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-R">—</p>
+                <p class="spec-label">Load R = V<sub>o</sub>/I<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-Ibus">—</p>
+                <p class="spec-label">Avg bus current I<sub>bus</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="ch-out-Po">—</p>
+                <p class="spec-label">Output Power P<sub>o</sub></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card panel-simulink" aria-labelledby="ch-sim-heading">
+            <div class="panel-head">
+              <h2 id="ch-sim-heading" class="panel-title">Simulink Pulse Settings</h2>
+              <span class="badge badge-soft">Buck switch</span>
+            </div>
+            <p class="simulink-note">
+              Map into a Simulink <strong>Pulse Generator</strong> for the buck MOSFET/switch (open-loop CCM).
+            </p>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-period">—</p>
+                <p class="spec-label">Period (secs)</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm accent" id="ch-out-pw">—</p>
+                <p class="spec-label">Pulse Width (%)</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-amp">1</p>
+                <p class="spec-label">Amplitude</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <section class="formula-band" aria-labelledby="formula-heading">
+      <div class="panel-head" style="margin-bottom: var(--sm);">
+        <h2 id="formula-heading" class="panel-title" style="margin-bottom: 0;">Ideal CCM Equations</h2>
+        <button type="button" class="topo-btn topology-toggle-sm" id="btn-toggle-formulas" aria-expanded="true" style="height: 36px; min-width: auto; padding: 0 16px; border: 1px solid var(--hairline); font-size: 11px;">
+          Hide
+        </button>
+      </div>
+      <div class="formula-grid" id="formula-grid">
+        <!-- filled by JS based on topology -->
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <p id="footer-copy">Simverse Phase I · Ideal CCM Buck &amp; Boost · Frontend only</p>
+      <p class="footer-meta">Hosted on Netlify · No data leaves your browser</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

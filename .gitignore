@@ -1,0 +1,17 @@
+# Archives / deploy packages
+*.zip
+*.rar
+
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
