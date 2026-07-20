@@ -146,18 +146,24 @@ Built from the product PRD and Ferrari design system tokens (Inter as the open-s
 
 ### Charging Circuit
 
-Offline educational PSU / charger chain (ideal, 50 Hz, single-phase):
+Offline educational PSU / charger chain (50 Hz, single-phase full-wave):
 
 **230 V AC → step-down transformer → diode bridge → bulk capacitor → CCM buck → regulated DC**
 
+| Stage | Design equations |
+|-------|------------------|
+| **1. Transformer** | \(n = V_{primary}/V_{secondary}\), \(V_{peak,sec}=V_{secondary}\sqrt{2}\) |
+| **2. Rectifier + bulk** | \(V_{dc,nl}\approx V_{peak}-2V_{diode}\), \(V_{dc,load}\approx V_{dc,nl}-\text{sag}\), \(\Delta t=1/(2f_{line})\), \(C_{bulk}\ge(I_{load}\Delta t)/\Delta V_{ripple}\) |
+| **3. Buck CCM** | \(D=V_{out}/V_{dc}\), \(R=V_{out}/I_{out}\), \(\Delta I_L=(\%/100)I_{out}\), \(L=(V_{dc}-V_{out})D/(\Delta I_L f_{sw})\), \(C=\Delta I_L/(8 f_{sw}\Delta V_{out})\) |
+| **4. Currents** | \(I_{in,buck}\approx D\cdot I_{out}\), \(I_{secondary}\approx I_{in,buck}\) (avg) |
+| **5. Simulink** | Period \(=1/f_{sw}\), PW% \(=D\times100\), Amp \(=1\) (or 5–15 for gate drive) |
+
 | Inputs | Outputs |
 |--------|---------|
-| \(V_o\), \(I_o\) | Secondary \(V_s\) RMS, turns ratio \(230:V_s\) |
-| DC bus **or** secondary AC | \(V_{bus}\) no-load & under load, \(C_{bulk}\) |
-| \(f_{sw}\), \(\Delta I_L\%\), \(\Delta V_o\%\) | Buck \(D\), \(L\), \(C\), load \(R\) |
-| Bulk ripple % (optional, default 10%) | \(I_{bus}\), \(P_o\), Simulink period / PW% / amp |
-
-Key formulas: \(V_s = V_{bus}/\sqrt{2}\), \(C_{bulk} = I_{bus}/(2 f_{line}\Delta V)\), buck \(D = V_o/V_{bus}\).
+| \(V_{out}\), \(I_{out}\) | \(V_{secondary}\), winding ratio \(n\), \(V_{peak}\) |
+| Sec. AC **or** DC bus no-load | \(V_{dc}\) no-load & under load, \(C_{bulk}\), \(\Delta t\), \(\Delta V_{ripple}\) |
+| \(V_{diode}\), voltage sag, bulk ripple % | Buck \(D\), \(L\), \(C\), load \(R\) |
+| \(f_{sw}\), \(\Delta I_L\%\), \(\Delta V_{out}\%\) | \(I_{in,buck}\), \(I_{secondary}\), \(P_o\), Simulink pulse |
 
 ## Local preview
 
@@ -173,15 +179,19 @@ npx serve .
 
 Then visit `http://localhost:8080`.
 
-## Deploy to Netlify
+## Deploy
 
-### Option A — Drag & drop
+This is a **static** site (HTML / CSS / JS only). There is **no** `package.json` and **no** Next.js.
+
+### Netlify
+
+#### Option A — Drag & drop
 
 1. Go to [app.netlify.com/drop](https://app.netlify.com/drop)
 2. Drag the project folder (or zip of `index.html`, `styles.css`, `app.js`, `netlify.toml`)
 3. Netlify gives you a live URL
 
-### Option B — Git
+#### Option B — Git
 
 1. Push this repo to GitHub / GitLab / Bitbucket
 2. In Netlify: **Add new site → Import an existing project**
@@ -192,13 +202,27 @@ Then visit `http://localhost:8080`.
 
 `netlify.toml` already sets `publish = "."` and basic security headers.
 
-### Option C — Netlify CLI
+#### Option C — Netlify CLI
 
 ```bash
 npm install -g netlify-cli
 netlify login
 netlify deploy --prod --dir=.
 ```
+
+### Vercel
+
+If you deploy on Vercel, **do not** use the Next.js preset (this project is not Next.js).
+
+1. Import the GitHub repo
+2. In project settings:
+   - **Framework Preset:** Other / None
+   - **Build Command:** *(empty)*
+   - **Output Directory:** `.` (or leave default with `vercel.json`)
+   - **Root Directory:** `.` (repo root, where `index.html` lives)
+3. Deploy
+
+`vercel.json` sets `framework: null` and serves the static root.
 
 ## Project structure
 
