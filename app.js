@@ -1,5 +1,5 @@
 /**
- * Simverse — Buck, Boost, BB, NIBB, Semi, Full & Charging Circuit
+ * Simverse — Buck, Boost, BB, NIBB, SEPIC, Semi, Full & Charging Circuit
  * Ideal CCM equations, live updates, engineering unit formatting.
  */
 
@@ -11,12 +11,12 @@
     BOOST: "boost",
     BUCKBOOST: "buckboost",
     NIBB: "nibb",
+    SEPIC: "sepic",
     SEMI: "semi",
     FULL: "full",
     CHARGE: "charge",
   };
   const LOAD = { R: "r", RL: "rl" };
-  const CHARGE_MID = { VBUS: "vbus", VSEC: "vsec" };
   const LINE = { V_PRIMARY_RMS: 230, F_LINE: 50 };
 
   const els = {
@@ -32,6 +32,7 @@
     btnBoost: document.getElementById("btn-boost"),
     btnBuckBoost: document.getElementById("btn-buckboost"),
     btnNibb: document.getElementById("btn-nibb"),
+    btnSepic: document.getElementById("btn-sepic"),
     btnSemi: document.getElementById("btn-semi"),
     btnFull: document.getElementById("btn-full"),
     btnCharge: document.getElementById("btn-charge"),
@@ -57,6 +58,9 @@
     dcdcSimulinkBadge: document.getElementById("dcdc-simulink-badge"),
     resultsDcdc: document.getElementById("results-dcdc"),
     outDLabel: document.getElementById("out-D-label"),
+    outLLabel: document.getElementById("out-L-label"),
+    outCLabel: document.getElementById("out-C-label"),
+    sepicExtraPanel: document.getElementById("sepic-extra-panel"),
     nibbDriveWrap: document.getElementById("nibb-drive-wrap"),
     btnNibbMulti: document.getElementById("btn-nibb-multi"),
     btnNibbSimul: document.getElementById("btn-nibb-simul"),
@@ -71,6 +75,9 @@
       L: document.getElementById("out-L"),
       C: document.getElementById("out-C"),
       R: document.getElementById("out-R"),
+      L2: document.getElementById("out-L2"),
+      Cs: document.getElementById("out-Cs"),
+      IL1: document.getElementById("out-IL1"),
       Io: document.getElementById("out-Io"),
       Iin: document.getElementById("out-Iin"),
       D: document.getElementById("out-D"),
@@ -136,19 +143,15 @@
       delayPairB: document.getElementById("full-out-delay-pair-b"),
     },
 
-    /* Charging Circuit */
+    /* Charging Circuit (beginner) */
     chargeForm: document.getElementById("charge-form"),
-    btnChargeVbus: document.getElementById("btn-charge-vbus"),
-    btnChargeVsec: document.getElementById("btn-charge-vsec"),
+    chVs: document.getElementById("ch-vs"),
     chVo: document.getElementById("ch-vo"),
     chIo: document.getElementById("ch-io"),
-    chMid: document.getElementById("ch-mid"),
-    chMidLabel: document.getElementById("ch-mid-label"),
-    chMidUnit: document.getElementById("ch-mid-unit"),
+    chVdiode: document.getElementById("ch-vdiode"),
     chFsw: document.getElementById("ch-fsw"),
     chDilPct: document.getElementById("ch-dil-pct"),
     chDvoPct: document.getElementById("ch-dvo-pct"),
-    chDvBulkPct: document.getElementById("ch-dvbulk-pct"),
     chargeBadge: document.getElementById("charge-badge"),
     chargeValidation: document.getElementById("charge-validation-msg"),
     chargeHint: document.getElementById("charge-hint"),
@@ -156,19 +159,22 @@
     chOut: {
       vsec: document.getElementById("ch-out-vsec"),
       ratio: document.getElementById("ch-out-ratio"),
-      vm: document.getElementById("ch-out-vm"),
-      vbusNl: document.getElementById("ch-out-vbus-nl"),
-      vbusLoad: document.getElementById("ch-out-vbus-load"),
-      cbulk: document.getElementById("ch-out-cbulk"),
+      vprimary: document.getElementById("ch-out-vprimary"),
+      vdcApprox: document.getElementById("ch-out-vdc-approx"),
+      vdcNl: document.getElementById("ch-out-vdc-nl"),
+      vinBuck: document.getElementById("ch-out-vin-buck"),
       D: document.getElementById("ch-out-D"),
+      R: document.getElementById("ch-out-R"),
+      dil: document.getElementById("ch-out-dil"),
       L: document.getElementById("ch-out-L"),
       C: document.getElementById("ch-out-C"),
-      R: document.getElementById("ch-out-R"),
-      Ibus: document.getElementById("ch-out-Ibus"),
-      Po: document.getElementById("ch-out-Po"),
+      dvo: document.getElementById("ch-out-dvo"),
+      freq: document.getElementById("ch-out-freq"),
       period: document.getElementById("ch-out-period"),
       pw: document.getElementById("ch-out-pw"),
       amp: document.getElementById("ch-out-amp"),
+      Po: document.getElementById("ch-out-Po"),
+      pwNote: document.getElementById("ch-out-pw-note"),
     },
   };
 
@@ -178,7 +184,6 @@
   let semiLoadType = LOAD.R;
   let fullLoadType = LOAD.R;
   let nibbDrive = NIBB_DRIVE.MULTI;
-  let chargeMid = CHARGE_MID.VBUS;
   let formulasOpen = true;
 
   /* ——— Engineering unit formatting ——— */
@@ -303,13 +308,17 @@
       };
     }
 
-    // Buck-Boost / NIBB: both step-up and step-down allowed (magnitude of Vo)
+    // Buck-Boost / NIBB / SEPIC: both step-up and step-down allowed
 
     return { ok: true };
   }
 
   function isBbFamily() {
-    return topology === TOPOLOGY.BUCKBOOST || topology === TOPOLOGY.NIBB;
+    return (
+      topology === TOPOLOGY.BUCKBOOST ||
+      topology === TOPOLOGY.NIBB ||
+      topology === TOPOLOGY.SEPIC
+    );
   }
 
   /**
@@ -407,6 +416,11 @@
     let C;
     let nibbMode = null;
 
+    let L2 = null;
+    let Cs = null;
+    let IL1 = null;
+    let IL2 = null;
+
     if (topology === TOPOLOGY.BUCK) {
       D = vout / vin;
       L = ((vin - vout) * D) / (fs * dil);
@@ -437,6 +451,19 @@
         L = (vin * D) / (fs * dil);
         C = (Io * D) / (fs * dvo);
       }
+    } else if (topology === TOPOLOGY.SEPIC) {
+      // Ideal CCM SEPIC (non-inverting step-up/down)
+      // Vo/Vin = D/(1−D)  →  D = Vo/(Vin+Vo)
+      D = vout / (vin + vout);
+      // L1 = L2 when same ΔI_L (beginner / common design choice)
+      L = (vin * D) / (fs * dil);
+      L2 = L;
+      // Output capacitor Co (same form as boost / buck-boost)
+      C = (Io * D) / (fs * dvo);
+      // Coupling capacitor Cs — same ΔV_o allowance for beginner sizing
+      Cs = (Io * D) / (fs * dvo);
+      IL1 = Iin;
+      IL2 = Io;
     } else {
       D = NaN;
       L = NaN;
@@ -449,7 +476,11 @@
       R,
       D,
       L,
+      L2,
       C,
+      Cs,
+      IL1,
+      IL2,
       period: 1 / fs,
       pulseWidthPct: D * 100,
       amplitude: 1,
@@ -467,12 +498,28 @@
     setText(els.out.period, "—");
     setText(els.out.pw, "—");
     setText(els.out.amp, "1");
+    if (els.out.L2) setText(els.out.L2, "—");
+    if (els.out.Cs) setText(els.out.Cs, "—");
+    if (els.out.IL1) setText(els.out.IL1, "—");
     if (els.nibbModeBadge) setText(els.nibbModeBadge, "—");
     if (els.nibbModeReason) els.nibbModeReason.innerHTML = "—";
     if (els.nibbSwBuck) setText(els.nibbSwBuck, "—");
     if (els.nibbSwBoost) setText(els.nibbSwBoost, "—");
     if (els.nibbSwPwm) setText(els.nibbSwPwm, "—");
     if (els.nibbAltHint) els.nibbAltHint.innerHTML = "";
+  }
+
+  function setDcdcComponentLabels(isSepic) {
+    if (els.outLLabel) {
+      els.outLLabel.innerHTML = isSepic
+        ? "Inductance L<sub>1</sub>"
+        : "Inductance L";
+    }
+    if (els.outCLabel) {
+      els.outCLabel.innerHTML = isSepic
+        ? "Output Cap C<sub>o</sub>"
+        : "Capacitance C";
+    }
   }
 
   function renderNibbMode(mode) {
@@ -505,6 +552,22 @@
       `${trimTrailingZeros(Number(r.pulseWidthPct.toPrecision(4)))} %`
     );
     setText(els.out.amp, "1");
+
+    const isSepic = topology === TOPOLOGY.SEPIC;
+    setDcdcComponentLabels(isSepic);
+    if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = !isSepic;
+    if (isSepic) {
+      if (els.out.L2)
+        setText(els.out.L2, formatEngineering(r.L2 != null ? r.L2 : r.L, "H"));
+      if (els.out.Cs)
+        setText(els.out.Cs, formatEngineering(r.Cs, "F"));
+      if (els.out.IL1)
+        setText(els.out.IL1, formatEngineering(r.IL1 != null ? r.IL1 : r.Iin, "A"));
+    } else {
+      if (els.out.L2) setText(els.out.L2, "—");
+      if (els.out.Cs) setText(els.out.Cs, "—");
+      if (els.out.IL1) setText(els.out.IL1, "—");
+    }
 
     if (els.outDLabel) {
       els.outDLabel.textContent =
@@ -951,31 +1014,30 @@
     renderFullResults(calculateFull(inputs));
   }
 
-  /* ——— Charging Circuit (230 V → XFMR → bridge → bulk C → buck) ——— */
+  /* ——— Charging Circuit (beginner: transformer + rectifier + buck) ——— */
 
   function readChargeInputs() {
+    const Vs = parseFloat(els.chVs && els.chVs.value);
     const Vo = parseFloat(els.chVo.value);
     const Io = parseFloat(els.chIo.value);
-    const mid = parseFloat(els.chMid.value);
     const fsw = parseFloat(els.chFsw.value) * 1000; // kHz → Hz
     const dilPct = parseFloat(els.chDilPct.value);
     const dvoPct = parseFloat(els.chDvoPct.value);
-    let dvBulkPct = parseFloat(els.chDvBulkPct.value);
-    if (!Number.isFinite(dvBulkPct) || dvBulkPct <= 0) dvBulkPct = 10;
+    let Vdiode = parseFloat(els.chVdiode && els.chVdiode.value);
+    if (!Number.isFinite(Vdiode) || Vdiode < 0) Vdiode = 0;
 
-    return { Vo, Io, mid, fsw, dilPct, dvoPct, dvBulkPct };
+    return { Vs, Vo, Io, fsw, dilPct, dvoPct, Vdiode };
   }
 
   function validateCharge(inputs) {
-    const { Vo, Io, mid, fsw, dilPct, dvoPct, dvBulkPct } = inputs;
+    const { Vs, Vo, Io, fsw, dilPct, dvoPct, Vdiode } = inputs;
     const checks = [
-      ["V<sub>o</sub>", Vo],
-      ["I<sub>o</sub>", Io],
-      [chargeMid === CHARGE_MID.VBUS ? "V<sub>bus</sub>" : "V<sub>s</sub>", mid],
-      ["f<sub>sw</sub>", fsw],
-      ["ΔI<sub>L</sub> %", dilPct],
-      ["ΔV<sub>o</sub> %", dvoPct],
-      ["ΔV<sub>bulk</sub> %", dvBulkPct],
+      ["V<sub>s</sub> (secondary)", Vs],
+      ["V<sub>out</sub>", Vo],
+      ["I<sub>out</sub>", Io],
+      ["f (switching)", fsw],
+      ["ΔI %", dilPct],
+      ["ΔV %", dvoPct],
     ];
 
     for (const [name, val] of checks) {
@@ -984,26 +1046,34 @@
       }
     }
 
-    // Resolve bus for buck constraint
-    let Vbus_nl;
-    if (chargeMid === CHARGE_MID.VBUS) {
-      Vbus_nl = mid;
-    } else {
-      Vbus_nl = mid * Math.SQRT2;
+    if (!Number.isFinite(Vdiode) || Vdiode < 0) {
+      return { ok: false, message: "Enter a non-negative V<sub>diode</sub> (use 0 to ignore)." };
     }
 
-    if (!(Vo < Vbus_nl)) {
+    // Beginner DC after rectifier + cap
+    const VdcApprox = Vs * Math.SQRT2;
+    const Vin = VdcApprox - 2 * Vdiode;
+
+    if (!(Vin > 0)) {
       return {
         ok: false,
         message:
-          "Buck stage needs V<sub>o</sub> &lt; V<sub>bus</sub>. Raise DC bus / secondary or lower V<sub>o</sub>.",
+          "DC bus is not positive. Raise V<sub>s</sub> or lower V<sub>diode</sub>.",
       };
     }
 
-    if (dilPct > 100 || dvoPct > 50 || dvBulkPct > 50) {
+    if (!(Vo < Vin)) {
       return {
         ok: false,
-        message: "Ripple percentages look unrealistic. Try ΔI<sub>L</sub> ≤ 100%, ΔV ≤ 50%.",
+        message:
+          "Buck needs V<sub>out</sub> &lt; V<sub>in</sub> (DC bus). Raise V<sub>s</sub> or lower V<sub>out</sub>.",
+      };
+    }
+
+    if (dilPct > 100 || dvoPct > 50) {
+      return {
+        ok: false,
+        message: "Ripple percentages look high. Try ΔI ≤ 100%, ΔV ≤ 50%.",
       };
     }
 
@@ -1011,80 +1081,67 @@
   }
 
   /**
-   * Ideal offline charging PSU chain.
-   * Primary: 230 Vrms, 50 Hz
-   * Cap-input bridge: Vbus_nl ≈ √2 · Vs
-   * Under load: Vbus_load ≈ Vbus_nl − ΔVbulk/2
-   * Cbulk = Ibus / (2 · fline · ΔVbulk)  [full-wave 100 Hz ripple]
-   * Buck CCM: D = Vo/Vbus, L, C as Phase I buck (use Vbus_load as Vin)
+   * Beginner design equations:
+   * 1) Transformer: winding ratio = 230 / Vs
+   * 2) DC after rect+cap: ≈ Vs × 1.414; no-load ≈ Vs×√2 − 2·Vdiode
+   * 3) Buck: D = Vout/Vin · R = Vout/Iout
+   *          L = (Vin − Vout) · D / (ΔI · f)
+   *          C = ΔI / (8 · f · ΔV)
+   * 4) Pulse: Period = 1/f · PW% = D×100
    */
   function calculateCharge(inputs) {
-    const { Vo, Io, mid, fsw, dilPct, dvoPct, dvBulkPct } = inputs;
-    const fLine = LINE.F_LINE;
+    const { Vs, Vo, Io, fsw, dilPct, dvoPct, Vdiode } = inputs;
     const Vp = LINE.V_PRIMARY_RMS;
 
-    let Vs; // secondary RMS
-    let Vbus_nl;
+    // 1. Transformer
+    const n = Vp / Vs;
 
-    if (chargeMid === CHARGE_MID.VBUS) {
-      Vbus_nl = mid;
-      Vs = Vbus_nl / Math.SQRT2;
-    } else {
-      Vs = mid;
-      Vbus_nl = Vs * Math.SQRT2;
-    }
+    // 2. DC after rectifier + capacitor
+    const VdcApprox = Vs * Math.SQRT2; // ≈ Vs × 1.414
+    const VdcNl = VdcApprox - 2 * Vdiode; // no-load (e.g. ~15.75 V for 12 V + diodes)
+    const Vin = VdcNl; // buck input
 
-    const Vm = Vs * Math.SQRT2;
-    const turnsRatio = Vp / Vs; // Np/Ns for Vp:Vs = ratio:1
-    const Po = Vo * Io;
+    // 3. Buck converter
+    const D = Vo / Vin;
     const R = Vo / Io;
-
-    const dVbulk = (dvBulkPct / 100) * Vbus_nl;
-    // Approx average bus under load (peak minus half ripple)
-    const Vbus_load = Math.max(Vo * 1.01, Vbus_nl - dVbulk / 2);
-
-    // Ideal power balance: Ibus ≈ Po / Vbus_load
-    const Ibus = Po / Vbus_load;
-
-    // Full-wave bulk cap: C = I / (2 f ΔV)
-    const Cbulk = Ibus / (2 * fLine * dVbulk);
-
-    // Buck on loaded bus
-    const D = Vo / Vbus_load;
-    const dIL = (dilPct / 100) * Io;
-    const dVo = (dvoPct / 100) * Vo;
-    const L = ((Vbus_load - Vo) * D) / (fsw * dIL);
+    const dIL = (dilPct / 100) * Io; // ΔI
+    const dVo = (dvoPct / 100) * Vo; // ΔV
+    const L = ((Vin - Vo) * D) / (dIL * fsw);
     const C = dIL / (8 * fsw * dVo);
 
+    // 4. Pulse generator
     const period = 1 / fsw;
     const pulseWidthPct = D * 100;
+    const Po = Vo * Io;
 
     return {
       Vs,
-      Vm,
-      turnsRatio,
-      Vbus_nl,
-      Vbus_load,
-      dVbulk,
-      Cbulk,
-      D,
-      L,
-      C,
-      R,
+      n,
+      Vp,
+      VdcApprox,
+      VdcNl,
+      Vin,
+      Vdiode,
+      Vo,
       Io,
-      Ibus,
-      Po,
-      period,
-      pulseWidthPct,
-      amplitude: 1,
+      D,
+      R,
       dIL,
       dVo,
+      L,
+      C,
+      fsw,
+      period,
+      pulseWidthPct,
+      Po,
+      amplitude: 1,
     };
   }
 
   function clearChargeResults() {
     Object.keys(els.chOut).forEach((k) => {
       if (k === "amp") setText(els.chOut[k], "1");
+      else if (k === "vprimary") setText(els.chOut[k], "230 V");
       else setText(els.chOut[k], "—");
     });
   }
@@ -1093,24 +1150,35 @@
     setText(els.chOut.vsec, formatEngineering(r.Vs, "V"));
     setText(
       els.chOut.ratio,
-      `${trimTrailingZeros(Number(r.turnsRatio.toPrecision(4)))} : 1`
+      trimTrailingZeros(Number(r.n.toPrecision(4)))
     );
-    setText(els.chOut.vm, formatEngineering(r.Vm, "V"));
-    setText(els.chOut.vbusNl, formatEngineering(r.Vbus_nl, "V"));
-    setText(els.chOut.vbusLoad, formatEngineering(r.Vbus_load, "V"));
-    setText(els.chOut.cbulk, formatEngineering(r.Cbulk, "F"));
+    if (els.chOut.vprimary) setText(els.chOut.vprimary, "230 V");
+    if (els.chOut.vdcApprox)
+      setText(els.chOut.vdcApprox, formatEngineering(r.VdcApprox, "V"));
+    if (els.chOut.vdcNl)
+      setText(els.chOut.vdcNl, formatEngineering(r.VdcNl, "V"));
+    if (els.chOut.vinBuck)
+      setText(els.chOut.vinBuck, formatEngineering(r.Vin, "V"));
     setText(els.chOut.D, formatPercent(r.D));
+    setText(els.chOut.R, formatEngineering(r.R, "Ω"));
+    if (els.chOut.dil) setText(els.chOut.dil, formatEngineering(r.dIL, "A"));
     setText(els.chOut.L, formatEngineering(r.L, "H"));
     setText(els.chOut.C, formatEngineering(r.C, "F"));
-    setText(els.chOut.R, formatEngineering(r.R, "Ω"));
-    setText(els.chOut.Ibus, formatEngineering(r.Ibus, "A"));
-    setText(els.chOut.Po, formatEngineering(r.Po, "W"));
+    if (els.chOut.dvo) setText(els.chOut.dvo, formatEngineering(r.dVo, "V"));
+    if (els.chOut.freq)
+      setText(els.chOut.freq, formatEngineering(r.fsw, "Hz"));
     setText(els.chOut.period, formatEngineering(r.period, "s"));
     setText(
       els.chOut.pw,
       `${trimTrailingZeros(Number(r.pulseWidthPct.toPrecision(4)))} %`
     );
     setText(els.chOut.amp, "1");
+    setText(els.chOut.Po, formatEngineering(r.Po, "W"));
+    if (els.chOut.pwNote)
+      setText(
+        els.chOut.pwNote,
+        trimTrailingZeros(Number(r.D.toPrecision(4)))
+      );
   }
 
   function showChargeValidation(message) {
@@ -1139,47 +1207,6 @@
     renderChargeResults(calculateCharge(inputs));
   }
 
-  function setChargeMid(next, convertValue) {
-    const prev = chargeMid;
-    const mid = parseFloat(els.chMid && els.chMid.value);
-    chargeMid = next;
-    const isBus = next === CHARGE_MID.VBUS;
-
-    if (els.btnChargeVbus) {
-      els.btnChargeVbus.classList.toggle("is-active", isBus);
-      els.btnChargeVbus.setAttribute("aria-pressed", String(isBus));
-    }
-    if (els.btnChargeVsec) {
-      els.btnChargeVsec.classList.toggle("is-active", !isBus);
-      els.btnChargeVsec.setAttribute("aria-pressed", String(!isBus));
-    }
-
-    if (els.chMidLabel) {
-      els.chMidLabel.innerHTML = isBus
-        ? 'DC Bus Voltage <span class="sym">V<sub>bus</sub></span>'
-        : 'Secondary AC (RMS) <span class="sym">V<sub>s</sub></span>';
-    }
-
-    if (
-      convertValue &&
-      prev !== next &&
-      Number.isFinite(mid) &&
-      mid > 0 &&
-      els.chMid
-    ) {
-      if (isBus) {
-        // was Vs → Vbus ≈ √2 Vs
-        els.chMid.value = String(Number((mid * Math.SQRT2).toPrecision(4)));
-      } else {
-        // was Vbus → Vs ≈ Vbus/√2
-        els.chMid.value = String(Number((mid / Math.SQRT2).toPrecision(4)));
-      }
-    }
-
-    updateFormulas();
-    recomputeCharge();
-  }
-
   /* ——— Formulas ——— */
 
   function updateFormulas() {
@@ -1187,23 +1214,20 @@
     let title = "Ideal CCM Equations";
 
     if (topology === TOPOLOGY.CHARGE) {
-      title = "Charging Circuit Equations";
+      title = "Charging Circuit — Beginner Equations";
       items = [
-        { label: "Architecture", expr: "230 V AC → XFMR → bridge → Cbulk → buck → Vo" },
-        { label: "Secondary (from Vbus)", expr: "Vs = Vbus / √2   (cap-input peak ≈ Vbus)" },
-        { label: "Peak secondary", expr: "Vm = √2 · Vs" },
-        { label: "Turns ratio", expr: "Np:Ns = 230 : Vs  →  ratio = 230/Vs : 1" },
-        { label: "Vbus no-load", expr: "Vbus,nl ≈ Vm = √2 · Vs" },
-        { label: "Vbus under load", expr: "Vbus,load ≈ Vbus,nl − ΔVbulk/2" },
-        { label: "Bulk ripple", expr: "ΔVbulk = (%/100) · Vbus,nl" },
-        { label: "Bulk capacitor", expr: "Cbulk = Ibus / (2 · fline · ΔVbulk)   · fline = 50 Hz" },
-        { label: "Bus current", expr: "Ibus ≈ Po / Vbus,load   · Po = Vo · Io" },
-        { label: "Buck duty", expr: "D = Vo / Vbus,load" },
-        { label: "Load resistance", expr: "R = Vo / Io" },
-        { label: "Buck inductance", expr: "L = (Vbus − Vo) · D / (fsw · ΔIL)" },
-        { label: "Buck capacitance", expr: "C = ΔIL / (8 · fsw · ΔVo)" },
-        { label: "Ripples from %", expr: "ΔIL = (%IL/100)·Io · ΔVo = (%Vo/100)·Vo" },
-        { label: "Simulink period", expr: "T = 1 / fsw · PW = D × 100% · A = 1" },
+        { label: "Chain", expr: "230 V AC → transformer → rectifier + cap → buck → Vout" },
+        { label: "1 · Secondary voltage", expr: "Vs = user (e.g. 12 V)" },
+        { label: "1 · Winding ratio", expr: "n = 230 / Vs   (e.g. 230/12 ≈ 19.17)" },
+        { label: "2 · Approx DC", expr: "Vdc ≈ Vs × 1.414   (= Vs × √2)" },
+        { label: "2 · No-load DC (used as Vin)", expr: "Vin ≈ Vs × √2 − 2 · Vdiode   (e.g. ≈ 15.75 V)" },
+        { label: "3 · Duty cycle", expr: "D = Vout / Vin" },
+        { label: "3 · Load resistance", expr: "R = Vout / Iout" },
+        { label: "3 · Inductor", expr: "L = (Vin − Vout) · D / (ΔI · f)" },
+        { label: "3 · Capacitor", expr: "C = ΔI / (8 · f · ΔV)" },
+        { label: "3 · Ripples from %", expr: "ΔI = (%/100)·Iout · ΔV = (%/100)·Vout" },
+        { label: "4 · Pulse period", expr: "Period = 1 / f" },
+        { label: "4 · Pulse width", expr: "Pulse Width (%) = D × 100" },
       ];
     } else if (topology === TOPOLOGY.SEMI) {
       title = "Ideal Semi-Converter Equations";
@@ -1292,6 +1316,20 @@
         },
       ];
 
+      const sepic = [
+        { label: "Duty cycle", expr: "D = Vₒ / (Vᵢₙ + Vₒ)" },
+        { label: "Voltage gain", expr: "Vₒ / Vᵢₙ = D / (1 − D)   (non-inverting)" },
+        { label: "Inductor L₁", expr: "L₁ = Vᵢₙ · D / (fₛ · ΔIₗ)" },
+        { label: "Inductor L₂", expr: "L₂ = Vᵢₙ · D / (fₛ · ΔIₗ)   (same ΔIₗ → L₁ = L₂)" },
+        { label: "Coupling cap Cₛ", expr: "Cₛ = Iₒ · D / (fₛ · ΔVₒ)" },
+        { label: "Output cap Cₒ", expr: "Cₒ = Iₒ · D / (fₛ · ΔVₒ)" },
+        { label: "Inductor currents", expr: "Iₗ₁ ≈ Iᵢₙ · Iₗ₂ ≈ Iₒ" },
+        {
+          label: "Topology",
+          expr: "Non-inverting · 1 switch + 1 diode · step-up or step-down · +Vₒ",
+        },
+      ];
+
       let nibbEqs = [];
       if (topology === TOPOLOGY.NIBB) {
         const vin = parseFloat(els.vin.value);
@@ -1365,6 +1403,7 @@
       if (topology === TOPOLOGY.BUCK) topoEqs = buck;
       else if (topology === TOPOLOGY.BUCKBOOST) topoEqs = buckBoostInv;
       else if (topology === TOPOLOGY.NIBB) topoEqs = nibbEqs;
+      else if (topology === TOPOLOGY.SEPIC) topoEqs = sepic;
 
       items = common.concat(topoEqs).concat(sim);
     }
@@ -1424,8 +1463,11 @@
     const isBoost = topology === TOPOLOGY.BOOST;
     const isBb = topology === TOPOLOGY.BUCKBOOST;
     const isNibb = topology === TOPOLOGY.NIBB;
+    const isSepic = topology === TOPOLOGY.SEPIC;
 
     setText(els.heroEyebrow, "Power Electronics · Continuous Conduction Mode");
+    setDcdcComponentLabels(isSepic);
+    if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = !isSepic;
 
     if (isBuck) {
       els.badge.textContent = "Buck";
@@ -1493,6 +1535,22 @@
       }
       if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = false;
       if (els.nibbModePanel) els.nibbModePanel.hidden = false;
+    } else if (isSepic) {
+      els.badge.textContent = "SEPIC · CCM";
+      setText(els.navTagline, "CCM SEPIC Design");
+      setText(
+        els.heroLead,
+        "Size L₁, L₂, coupling Cₛ, and output Cₒ for an ideal non-inverting SEPIC. Step-up and step-down with common ground — same inputs as Buck/Boost."
+      );
+      setText(els.footerCopy, "Simverse Phase I · Ideal CCM SEPIC · Frontend only");
+      if (els.dcdcHint) {
+        els.dcdcHint.textContent =
+          "Ideal CCM SEPIC — non-inverting, step-up or step-down. L₁ = L₂ when the same ΔIₗ is used. Cₛ and Cₒ use ΔVₒ. Live updates as you type.";
+      }
+      if (els.dcdcSimulinkNote) {
+        els.dcdcSimulinkNote.innerHTML =
+          "Map these values into a Simulink <strong>Pulse Generator</strong> for the SEPIC MOSFET/switch (open-loop CCM).";
+      }
     }
 
     if (!isNibb) {
@@ -1509,15 +1567,20 @@
     const isBoost = next === TOPOLOGY.BOOST;
     const isBb = next === TOPOLOGY.BUCKBOOST;
     const isNibb = next === TOPOLOGY.NIBB;
+    const isSepic = next === TOPOLOGY.SEPIC;
     const isSemi = next === TOPOLOGY.SEMI;
     const isFull = next === TOPOLOGY.FULL;
     const isCharge = next === TOPOLOGY.CHARGE;
-    const isDcdc = isBuck || isBoost || isBb || isNibb;
+    const isDcdc = isBuck || isBoost || isBb || isNibb || isSepic;
 
     els.btnBuck.classList.toggle("is-active", isBuck);
     els.btnBoost.classList.toggle("is-active", isBoost);
     els.btnBuckBoost.classList.toggle("is-active", isBb);
     els.btnNibb.classList.toggle("is-active", isNibb);
+    if (els.btnSepic) {
+      els.btnSepic.classList.toggle("is-active", isSepic);
+      els.btnSepic.setAttribute("aria-pressed", String(isSepic));
+    }
     els.btnSemi.classList.toggle("is-active", isSemi);
     els.btnFull.classList.toggle("is-active", isFull);
     if (els.btnCharge) {
@@ -1567,17 +1630,18 @@
     }
 
     if (isCharge) {
-      setText(els.navTagline, "Charging Circuit Design");
-      setText(els.heroEyebrow, "Power Electronics · Offline AC–DC Supply");
+      setText(els.navTagline, "Charging Circuit (Beginner)");
+      setText(els.heroEyebrow, "Power Electronics · Transformer + Rectifier + Buck");
       setText(
         els.heroLead,
-        "Design a complete charging / offline PSU chain: 230 V AC → transformer → bridge → bulk capacitor → CCM buck → regulated DC. Live sizing and Simulink buck pulse settings."
+        "Beginner design flow: secondary voltage and winding ratio, DC after rectifier, then buck duty / L / C and Simulink pulse settings."
       );
       setText(
         els.footerCopy,
-        "Simverse · Charging Circuit · Frontend only"
+        "Simverse · Charging Circuit (Beginner) · Frontend only"
       );
-      setChargeMid(chargeMid, false);
+      updateFormulas();
+      recomputeCharge();
       return;
     }
 
@@ -1661,13 +1725,13 @@
 
     if (els.chargeForm) {
       const chargeInputs = [
+        els.chVs,
         els.chVo,
         els.chIo,
-        els.chMid,
+        els.chVdiode,
         els.chFsw,
         els.chDilPct,
         els.chDvoPct,
-        els.chDvBulkPct,
       ];
       chargeInputs.forEach((el) => {
         if (!el) return;
@@ -1686,6 +1750,9 @@
       setTopology(TOPOLOGY.BUCKBOOST)
     );
     els.btnNibb.addEventListener("click", () => setTopology(TOPOLOGY.NIBB));
+    if (els.btnSepic) {
+      els.btnSepic.addEventListener("click", () => setTopology(TOPOLOGY.SEPIC));
+    }
     els.btnSemi.addEventListener("click", () => setTopology(TOPOLOGY.SEMI));
     els.btnFull.addEventListener("click", () => setTopology(TOPOLOGY.FULL));
     if (els.btnCharge) {
@@ -1705,16 +1772,6 @@
     if (els.btnNibbSimul) {
       els.btnNibbSimul.addEventListener("click", () =>
         setNibbDrive(NIBB_DRIVE.SIMUL)
-      );
-    }
-    if (els.btnChargeVbus) {
-      els.btnChargeVbus.addEventListener("click", () =>
-        setChargeMid(CHARGE_MID.VBUS, true)
-      );
-    }
-    if (els.btnChargeVsec) {
-      els.btnChargeVsec.addEventListener("click", () =>
-        setChargeMid(CHARGE_MID.VSEC, true)
       );
     }
     if (els.btnToggleFormulas) {

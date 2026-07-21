@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Simverse Phase I — Buck, Boost, Buck-Boost, NIBB, semi and full controlled converter design calculators for ideal CCM equations and simulation settings." />
+  <meta name="description" content="Simverse Phase I — Buck, Boost, Buck-Boost, NIBB, SEPIC, semi and full controlled converter design calculators for ideal CCM equations and simulation settings." />
   <title>Simverse Phase I — Converter Design Tool</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -43,6 +43,9 @@
         </button>
         <button type="button" class="topo-btn" data-topology="nibb" id="btn-nibb" aria-pressed="false">
           NIBB
+        </button>
+        <button type="button" class="topo-btn" data-topology="sepic" id="btn-sepic" aria-pressed="false">
+          SEPIC
         </button>
         <button type="button" class="topo-btn" data-topology="semi" id="btn-semi" aria-pressed="false">
           Semi
@@ -168,15 +171,33 @@
             <div class="spec-grid spec-grid-3">
               <div class="spec-cell">
                 <p class="spec-value" id="out-L">—</p>
-                <p class="spec-label">Inductance L</p>
+                <p class="spec-label" id="out-L-label">Inductance L</p>
               </div>
               <div class="spec-cell">
                 <p class="spec-value" id="out-C">—</p>
-                <p class="spec-label">Capacitance C</p>
+                <p class="spec-label" id="out-C-label">Capacitance C</p>
               </div>
               <div class="spec-cell">
                 <p class="spec-value" id="out-R">—</p>
                 <p class="spec-label">Load Resistance R</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel panel-card" id="sepic-extra-panel" aria-labelledby="sepic-extra-heading" hidden>
+            <h2 id="sepic-extra-heading" class="panel-title">SEPIC Parts</h2>
+            <div class="spec-grid spec-grid-3">
+              <div class="spec-cell">
+                <p class="spec-value" id="out-L2">—</p>
+                <p class="spec-label">Inductance L<sub>2</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value accent" id="out-Cs">—</p>
+                <p class="spec-label">Coupling Cap C<sub>s</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value" id="out-IL1">—</p>
+                <p class="spec-label">Avg I<sub>L1</sub> ≈ I<sub>in</sub></p>
               </div>
             </div>
           </section>
@@ -511,7 +532,7 @@
       </div>
     </div>
 
-    <!-- ===================== Charging Circuit (AC–DC offline PSU) ===================== -->
+    <!-- ===================== Charging Circuit (beginner: XFMR + rect + buck) ===================== -->
     <div id="view-charge" class="circuit-view" hidden>
       <div class="layout">
         <section class="panel panel-inputs" aria-labelledby="charge-inputs-heading">
@@ -521,57 +542,44 @@
           </div>
 
           <p class="simulink-note" style="margin-top: 0;">
-            Chain: <strong>230 V AC</strong> → transformer → bridge → bulk C → <strong>buck</strong> → V<sub>o</sub>
-            · 50 Hz · ideal CCM
+            Beginner chain: <strong>230 V AC</strong> → transformer → rectifier + cap → <strong>buck</strong> → V<sub>out</sub>
           </p>
-
-          <div class="sub-toggle-wrap">
-            <span class="sub-toggle-label">Intermediate spec</span>
-            <div class="topology-toggle topology-toggle-sm" role="group" aria-label="Intermediate voltage type">
-              <button type="button" class="topo-btn is-active" id="btn-charge-vbus" data-mid="vbus" aria-pressed="true">
-                DC bus
-              </button>
-              <button type="button" class="topo-btn" id="btn-charge-vsec" data-mid="vsec" aria-pressed="false">
-                Sec. AC
-              </button>
-            </div>
-          </div>
 
           <form id="charge-form" class="input-grid" novalidate>
             <label class="field">
-              <span class="field-label">Output Voltage <span class="sym">V<sub>o</sub></span></span>
+              <span class="field-label">Secondary Voltage <span class="sym">V<sub>s</sub></span></span>
               <div class="field-control">
-                <input type="number" id="ch-vo" name="ch-vo" value="12" min="0" step="any" inputmode="decimal" required />
+                <input type="number" id="ch-vs" name="ch-vs" value="12" min="0" step="any" inputmode="decimal" required />
                 <span class="unit">V</span>
               </div>
             </label>
 
             <label class="field">
-              <span class="field-label">Output Current <span class="sym">I<sub>o</sub></span></span>
+              <span class="field-label">Buck Output Voltage <span class="sym">V<sub>out</sub></span></span>
               <div class="field-control">
-                <input type="number" id="ch-io" name="ch-io" value="2" min="0" step="any" inputmode="decimal" required />
-                <span class="unit">A</span>
-              </div>
-            </label>
-
-            <label class="field" id="field-ch-mid">
-              <span class="field-label" id="ch-mid-label">DC Bus Voltage <span class="sym">V<sub>bus</sub></span></span>
-              <div class="field-control">
-                <input type="number" id="ch-mid" name="ch-mid" value="24" min="0" step="any" inputmode="decimal" required />
-                <span class="unit" id="ch-mid-unit">V</span>
+                <input type="number" id="ch-vo" name="ch-vo" value="5" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">V</span>
               </div>
             </label>
 
             <label class="field">
-              <span class="field-label">Switching Frequency <span class="sym">f<sub>sw</sub></span></span>
+              <span class="field-label">Buck Output Current <span class="sym">I<sub>out</sub></span></span>
               <div class="field-control">
-                <input type="number" id="ch-fsw" name="ch-fsw" value="100" min="0" step="any" inputmode="decimal" required />
+                <input type="number" id="ch-io" name="ch-io" value="3" min="0" step="any" inputmode="decimal" required />
+                <span class="unit">A</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Switching Frequency <span class="sym">f</span></span>
+              <div class="field-control">
+                <input type="number" id="ch-fsw" name="ch-fsw" value="50" min="0" step="any" inputmode="decimal" required />
                 <span class="unit">kHz</span>
               </div>
             </label>
 
             <label class="field">
-              <span class="field-label">Inductor Ripple <span class="sym">ΔI<sub>L</sub> % of I<sub>o</sub></span></span>
+              <span class="field-label">Inductor Ripple <span class="sym">ΔI % of I<sub>out</sub></span></span>
               <div class="field-control">
                 <input type="number" id="ch-dil-pct" name="ch-dil-pct" value="20" min="0" step="any" inputmode="decimal" required />
                 <span class="unit">%</span>
@@ -579,7 +587,7 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Output Ripple <span class="sym">ΔV<sub>o</sub> % of V<sub>o</sub></span></span>
+              <span class="field-label">Output Ripple <span class="sym">ΔV % of V<sub>out</sub></span></span>
               <div class="field-control">
                 <input type="number" id="ch-dvo-pct" name="ch-dvo-pct" value="1" min="0" step="any" inputmode="decimal" required />
                 <span class="unit">%</span>
@@ -587,10 +595,10 @@
             </label>
 
             <label class="field">
-              <span class="field-label">Bulk Cap Ripple <span class="sym">ΔV<sub>bulk</sub> % of V<sub>bus</sub></span></span>
+              <span class="field-label">Diode Drop (optional) <span class="sym">V<sub>diode</sub></span></span>
               <div class="field-control">
-                <input type="number" id="ch-dvbulk-pct" name="ch-dvbulk-pct" value="10" min="0" step="any" inputmode="decimal" />
-                <span class="unit">%</span>
+                <input type="number" id="ch-vdiode" name="ch-vdiode" value="0.7" min="0" step="any" inputmode="decimal" />
+                <span class="unit">V</span>
               </div>
             </label>
           </form>
@@ -598,103 +606,113 @@
           <div id="charge-validation-msg" class="validation" role="alert" hidden></div>
 
           <p class="hint" id="charge-hint">
-            Primary fixed at 230 V RMS, 50 Hz. Ideal transformer, bridge, and CCM buck — no losses.
+            Simple design: winding ratio = 230 / V<sub>s</sub> · DC ≈ V<sub>s</sub> × 1.414 · buck Vin uses no-load DC (approx minus 2×diode) · D = V<sub>out</sub> / V<sub>in</sub>
           </p>
         </section>
 
         <div class="results-stack" id="results-charge">
           <section class="panel panel-card" aria-labelledby="ch-xfmr-heading">
-            <h2 id="ch-xfmr-heading" class="panel-title">Transformer &amp; Rectifier</h2>
+            <h2 id="ch-xfmr-heading" class="panel-title">1. Transformer</h2>
             <div class="spec-grid spec-grid-3">
               <div class="spec-cell">
                 <p class="spec-value" id="ch-out-vsec">—</p>
-                <p class="spec-label">Secondary V<sub>s</sub> (RMS)</p>
+                <p class="spec-label">Secondary Voltage V<sub>s</sub></p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value" id="ch-out-ratio">—</p>
-                <p class="spec-label">Turns Ratio N<sub>p</sub>:N<sub>s</sub></p>
+                <p class="spec-value accent" id="ch-out-ratio">—</p>
+                <p class="spec-label">Winding Ratio = 230 / V<sub>s</sub></p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value accent" id="ch-out-vm">—</p>
-                <p class="spec-label">Peak V<sub>m</sub> = √2 V<sub>s</sub></p>
+                <p class="spec-value" id="ch-out-vprimary">230 V</p>
+                <p class="spec-label">Primary (fixed)</p>
               </div>
             </div>
           </section>
 
           <section class="panel panel-card" aria-labelledby="ch-bus-heading">
-            <h2 id="ch-bus-heading" class="panel-title">DC Bus &amp; Bulk Cap</h2>
+            <h2 id="ch-bus-heading" class="panel-title">2. DC after Rectifier + Capacitor</h2>
             <div class="spec-grid spec-grid-3">
               <div class="spec-cell">
-                <p class="spec-value spec-value-sm" id="ch-out-vbus-nl">—</p>
-                <p class="spec-label">V<sub>bus</sub> no-load</p>
+                <p class="spec-value" id="ch-out-vdc-approx">—</p>
+                <p class="spec-label">Approx DC ≈ V<sub>s</sub> × 1.414</p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value spec-value-sm" id="ch-out-vbus-load">—</p>
-                <p class="spec-label">V<sub>bus</sub> under load</p>
+                <p class="spec-value accent" id="ch-out-vdc-nl">—</p>
+                <p class="spec-label">No-load DC ≈ V<sub>s</sub>×√2 − 2·V<sub>d</sub></p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value spec-value-sm accent" id="ch-out-cbulk">—</p>
-                <p class="spec-label">Bulk Capacitor C<sub>bulk</sub></p>
+                <p class="spec-value" id="ch-out-vin-buck">—</p>
+                <p class="spec-label">Buck V<sub>in</sub> (used below)</p>
               </div>
             </div>
           </section>
 
           <section class="panel panel-card" aria-labelledby="ch-buck-heading">
-            <h2 id="ch-buck-heading" class="panel-title">Buck Stage</h2>
+            <h2 id="ch-buck-heading" class="panel-title">3. Buck Converter</h2>
             <div class="spec-grid spec-grid-3">
               <div class="spec-cell">
                 <p class="spec-value" id="ch-out-D">—</p>
-                <p class="spec-label">Duty Cycle D</p>
+                <p class="spec-label">Duty D = V<sub>out</sub> / V<sub>in</sub></p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value" id="ch-out-L">—</p>
-                <p class="spec-label">Inductance L</p>
+                <p class="spec-value" id="ch-out-R">—</p>
+                <p class="spec-label">Load R = V<sub>out</sub> / I<sub>out</sub></p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value" id="ch-out-C">—</p>
-                <p class="spec-label">Output Cap C</p>
+                <p class="spec-value" id="ch-out-dil">—</p>
+                <p class="spec-label">ΔI (from % of I<sub>out</sub>)</p>
               </div>
             </div>
-          </section>
-
-          <section class="panel panel-card" aria-labelledby="ch-load-heading">
-            <h2 id="ch-load-heading" class="panel-title">Load &amp; Currents</h2>
-            <div class="spec-grid spec-grid-3">
+            <div class="spec-grid spec-grid-3" style="margin-top: var(--sm);">
               <div class="spec-cell">
-                <p class="spec-value spec-value-sm" id="ch-out-R">—</p>
-                <p class="spec-label">Load R = V<sub>o</sub>/I<sub>o</sub></p>
+                <p class="spec-value accent" id="ch-out-L">—</p>
+                <p class="spec-label">L = (V<sub>in</sub>−V<sub>out</sub>)·D / (ΔI·f)</p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value spec-value-sm" id="ch-out-Ibus">—</p>
-                <p class="spec-label">Avg bus current I<sub>bus</sub></p>
+                <p class="spec-value accent" id="ch-out-C">—</p>
+                <p class="spec-label">C = ΔI / (8·f·ΔV)</p>
               </div>
               <div class="spec-cell">
-                <p class="spec-value spec-value-sm accent" id="ch-out-Po">—</p>
-                <p class="spec-label">Output Power P<sub>o</sub></p>
+                <p class="spec-value" id="ch-out-dvo">—</p>
+                <p class="spec-label">ΔV (from % of V<sub>out</sub>)</p>
               </div>
             </div>
           </section>
 
           <section class="panel panel-card panel-simulink" aria-labelledby="ch-sim-heading">
             <div class="panel-head">
-              <h2 id="ch-sim-heading" class="panel-title">Simulink Pulse Settings</h2>
+              <h2 id="ch-sim-heading" class="panel-title">4. Pulse Generator (Simulink)</h2>
               <span class="badge badge-soft">Buck switch</span>
             </div>
             <p class="simulink-note">
-              Map into a Simulink <strong>Pulse Generator</strong> for the buck MOSFET/switch (open-loop CCM).
+              Frequency = f · Period = 1/f · Pulse Width (%) = D × 100 · Amplitude = 1
             </p>
             <div class="spec-grid spec-grid-3">
               <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-freq">—</p>
+                <p class="spec-label">Frequency</p>
+              </div>
+              <div class="spec-cell">
                 <p class="spec-value spec-value-sm" id="ch-out-period">—</p>
-                <p class="spec-label">Period (secs)</p>
+                <p class="spec-label">Period (seconds)</p>
               </div>
               <div class="spec-cell">
                 <p class="spec-value spec-value-sm accent" id="ch-out-pw">—</p>
                 <p class="spec-label">Pulse Width (%)</p>
               </div>
+            </div>
+            <div class="spec-grid spec-grid-3" style="margin-top: var(--sm);">
               <div class="spec-cell">
                 <p class="spec-value spec-value-sm" id="ch-out-amp">1</p>
                 <p class="spec-label">Amplitude</p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-Po">—</p>
+                <p class="spec-label">Output Power P<sub>o</sub></p>
+              </div>
+              <div class="spec-cell">
+                <p class="spec-value spec-value-sm" id="ch-out-pw-note">—</p>
+                <p class="spec-label">D as decimal</p>
               </div>
             </div>
           </section>

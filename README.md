@@ -2,7 +2,7 @@
 
 Lightweight, browser-only calculators for:
 
-1. **Ideal CCM** DC–DC **Buck**, **Boost**, **Buck-Boost**, and **NIBB** converters (size L, C, R + Simulink pulse settings)
+1. **Ideal CCM** DC–DC **Buck**, **Boost**, **Buck-Boost**, **NIBB**, and **SEPIC** converters (size L, C, R + Simulink pulse settings)
 2. **Single-phase symmetrical semi-converter** (AC–DC, R / RL load) — Package A
 3. **Single-phase fully controlled bridge** (4 SCR, R / RL CCM) — Package C
 4. **Charging Circuit** — offline AC–DC chain: 230 V → XFMR → bridge → bulk C → buck → \(V_o\)
@@ -11,15 +11,15 @@ Built from the product PRD and Ferrari design system tokens (Inter as the open-s
 
 ## Features
 
-### Buck / Boost / Buck-Boost / NIBB
+### Buck / Boost / Buck-Boost / NIBB / SEPIC
 
-- Topology toggle: **Buck** / **Boost** / **Buck-Boost** / **NIBB** / **Semi** / **Full** / **Charging**
+- Topology toggle: **Buck** / **Boost** / **Buck-Boost** / **NIBB** / **SEPIC** / **Semi** / **Full** / **Charging**
 - Live recalculation as you type (no Calculate button)
 - Inputs: \(V_{in}\), \(V_o\), \(P_o\), \(f_s\) (Hz or kHz), \(\Delta I_L\), \(\Delta V_o\)
 - Core outputs: inductance, capacitance, load resistance
 - Current specs: \(I_o\), \(I_{in}\), duty cycle
 - Simulink panel: period (s), pulse width (%), amplitude = 1
-- Validation: Buck requires \(V_o < V_{in}\); Boost requires \(V_o > V_{in}\); BB/NIBB allow step-up and step-down
+- Validation: Buck requires \(V_o < V_{in}\); Boost requires \(V_o > V_{in}\); BB/NIBB/SEPIC allow step-up and step-down
 - **Buck-Boost (D1):** inverting, 1 switch + 1 diode; enter \(|V_o|\)
 - **NIBB (D2):** non-inverting — **two drive strategies** (toggle on the page):
   - **Multi-mode** (from \(V_{in}, V_o\)):
@@ -27,6 +27,7 @@ Built from the product PRD and Ferrari design system tokens (Inter as the open-s
     - **Boost** (\(V_o > V_{in}\)): S₁ **ON**, PWM S₂
     - **Buck-Boost** (\(V_o \approx V_{in}\)): both switches same PWM
   - **Both PWM:** always simultaneous S₁+S₂, \(V_o/V_{in}=D/(1-D)\), any step-up/down
+- **SEPIC:** non-inverting step-up/down; sizes \(L_1\), \(L_2\), coupling \(C_s\), output \(C_o\)
 
 ### Single-phase semi-converter (Package A)
 
@@ -108,6 +109,17 @@ Built from the product PRD and Ferrari design system tokens (Inter as the open-s
 | Gain | \(V_o/V_{in} = D/(1-D)\) |
 | \(L\), \(C\) | \(L=V_{in}D/(f_s\Delta I_L)\), \(C=I_o D/(f_s\Delta V_o)\) |
 
+**SEPIC (non-inverting)**
+
+| Quantity | Formula |
+|----------|---------|
+| Duty cycle | \(D = V_o / (V_{in} + V_o)\) |
+| Voltage gain | \(V_o / V_{in} = D / (1-D)\) |
+| Inductors | \(L_1 = L_2 = V_{in} \cdot D / (f_s \cdot \Delta I_L)\) (same \(\Delta I_L\)) |
+| Coupling cap | \(C_s = I_o \cdot D / (f_s \cdot \Delta V_o)\) |
+| Output cap | \(C_o = I_o \cdot D / (f_s \cdot \Delta V_o)\) |
+| Currents | \(I_{L1} \approx I_{in}\), \(I_{L2} \approx I_o\) |
+
 **Simulink Pulse Generator**
 
 | Setting | Value |
@@ -144,26 +156,18 @@ Built from the product PRD and Ferrari design system tokens (Inter as the open-s
 
 **Gates:** \(t(T_1T_2)=(\alpha/360^\circ)/f\), \(t(T_3T_4)=((180^\circ+\alpha)/360^\circ)/f\)
 
-### Charging Circuit
+### Charging Circuit (beginner)
 
-Offline educational PSU / charger chain (50 Hz, single-phase full-wave):
+**230 V AC → transformer → rectifier + capacitor → buck → \(V_{out}\)**
 
-**230 V AC → step-down transformer → diode bridge → bulk capacitor → CCM buck → regulated DC**
+| Stage | Design equations (beginner) |
+|-------|------------------------------|
+| **1. Transformer** | \(V_s\) user-defined (e.g. 12 V); winding ratio \(n = 230 / V_s\) (e.g. ≈ 19.17) |
+| **2. DC after rect + cap** | Approx \(V_{dc} \approx V_s \times 1.414\); no-load \(V_{in} \approx V_s\sqrt{2} - 2V_{diode}\) (e.g. ≈ 15.75 V) |
+| **3. Buck** | \(D = V_{out}/V_{in}\), \(R = V_{out}/I_{out}\), \(L = (V_{in}-V_{out})D/(\Delta I\cdot f)\), \(C = \Delta I/(8 f \Delta V)\) |
+| **4. Pulse (Simulink)** | Frequency \(= f\), Period \(= 1/f\), Pulse Width (%) \(= D \times 100\) |
 
-| Stage | Design equations |
-|-------|------------------|
-| **1. Transformer** | \(n = V_{primary}/V_{secondary}\), \(V_{peak,sec}=V_{secondary}\sqrt{2}\) |
-| **2. Rectifier + bulk** | \(V_{dc,nl}\approx V_{peak}-2V_{diode}\), \(V_{dc,load}\approx V_{dc,nl}-\text{sag}\), \(\Delta t=1/(2f_{line})\), \(C_{bulk}\ge(I_{load}\Delta t)/\Delta V_{ripple}\) |
-| **3. Buck CCM** | \(D=V_{out}/V_{dc}\), \(R=V_{out}/I_{out}\), \(\Delta I_L=(\%/100)I_{out}\), \(L=(V_{dc}-V_{out})D/(\Delta I_L f_{sw})\), \(C=\Delta I_L/(8 f_{sw}\Delta V_{out})\) |
-| **4. Currents** | \(I_{in,buck}\approx D\cdot I_{out}\), \(I_{secondary}\approx I_{in,buck}\) (avg) |
-| **5. Simulink** | Period \(=1/f_{sw}\), PW% \(=D\times100\), Amp \(=1\) (or 5–15 for gate drive) |
-
-| Inputs | Outputs |
-|--------|---------|
-| \(V_{out}\), \(I_{out}\) | \(V_{secondary}\), winding ratio \(n\), \(V_{peak}\) |
-| Sec. AC **or** DC bus no-load | \(V_{dc}\) no-load & under load, \(C_{bulk}\), \(\Delta t\), \(\Delta V_{ripple}\) |
-| \(V_{diode}\), voltage sag, bulk ripple % | Buck \(D\), \(L\), \(C\), load \(R\) |
-| \(f_{sw}\), \(\Delta I_L\%\), \(\Delta V_{out}\%\) | \(I_{in,buck}\), \(I_{secondary}\), \(P_o\), Simulink pulse |
+Example defaults on the page: \(V_s=12\) V, \(V_{out}=5\) V, \(I_{out}=3\) A, \(f=50\) kHz → \(D \approx 32\%\).
 
 ## Local preview
 
