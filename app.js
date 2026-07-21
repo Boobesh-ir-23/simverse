@@ -590,16 +590,15 @@
     if (!els.dcdcSimulinkNote) return;
     if (mode.id === "buck") {
       els.dcdcSimulinkNote.innerHTML =
-        "<strong>Multi-mode · Buck:</strong> one Pulse Generator → <strong>S₁ only</strong> (period, PW = D×100%, amp = 1). <strong>S₂ gate = 0</strong> (OFF).";
+        "<strong>S₁ PWM</strong> · S₂ OFF (gate = 0)";
       if (els.dcdcSimulinkBadge) els.dcdcSimulinkBadge.textContent = "S₁ PWM";
     } else if (mode.id === "boost") {
       els.dcdcSimulinkNote.innerHTML =
-        "<strong>Multi-mode · Boost:</strong> <strong>S₁ gate = 1</strong> (always ON). One Pulse Generator → <strong>S₂ only</strong> (period, PW = D×100%, amp = 1).";
+        "<strong>S₁ ON</strong> · S₂ PWM only";
       if (els.dcdcSimulinkBadge) els.dcdcSimulinkBadge.textContent = "S₂ PWM";
     } else {
-      // simultaneous or multi-mode buck-boost
       els.dcdcSimulinkNote.innerHTML =
-        "<strong>Both switches PWM:</strong> one Pulse Generator feeds <strong>S₁ and S₂</strong> (same period, PW = D×100%, amp = 1). Simultaneous ON/OFF every cycle. Ideal V<sub>o</sub>/V<sub>in</sub> = D/(1−D).";
+        "<strong>S₁ + S₂</strong> same PWM · D/(1−D)";
       if (els.dcdcSimulinkBadge) els.dcdcSimulinkBadge.textContent = "S₁+S₂ PWM";
     }
   }
@@ -1430,10 +1429,10 @@
     els.btnLoadRl.setAttribute("aria-pressed", String(!isR));
 
     els.fieldLoadL.hidden = isR;
-    els.semiBadge.textContent = isR ? "R load · Sym" : "RL CCM · Sym";
+    els.semiBadge.textContent = isR ? "R load" : "RL CCM";
     els.semiHint.textContent = isR
-      ? "1-φ symmetrical semi-converter (2 SCR + 2 diode). Pure resistive load — iₒ follows vₒ."
-      : "1-φ symmetrical semi-converter. RL continuous conduction — freewheel π→π+α, large L assumed.";
+      ? "1-φ semi · R load"
+      : "1-φ semi · RL continuous";
 
     updateFormulas();
     recomputeSemi();
@@ -1449,10 +1448,10 @@
     els.btnFullLoadRl.setAttribute("aria-pressed", String(!isR));
 
     els.fieldFullLoadL.hidden = isR;
-    els.fullBadge.textContent = isR ? "R · 4 SCR" : "RL CCM · 4 SCR";
+    els.fullBadge.textContent = isR ? "R · 4 SCR" : "RL CCM";
     els.fullHint.textContent = isR
-      ? "1-φ fully controlled bridge (4 SCR). R load — current zero at π; Vₒ = (Vₘ/π)(1+cos α)."
-      : "1-φ fully controlled bridge. RL continuous — Vₒ = (2Vₘ/π)cos α; negative Vₒ when α > 90° (inverter).";
+      ? "1-φ full bridge · R load"
+      : "1-φ full bridge · RL (α>90° inverter)";
 
     updateFormulas();
     recomputeFull();
@@ -1465,103 +1464,76 @@
     const isNibb = topology === TOPOLOGY.NIBB;
     const isSepic = topology === TOPOLOGY.SEPIC;
 
-    setText(els.heroEyebrow, "Power Electronics · Continuous Conduction Mode");
+    setText(els.heroEyebrow, "Power Electronics · Ideal CCM");
     setDcdcComponentLabels(isSepic);
     if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = !isSepic;
 
+    // Always hide NIBB UI unless NIBB is active (prevents leftover panels on SEPIC)
+    if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = !isNibb;
+    if (els.nibbModePanel) els.nibbModePanel.hidden = !isNibb;
+    if (!isNibb && els.outDLabel) els.outDLabel.textContent = "Duty Cycle D";
+    if (els.dcdcSimulinkBadge) els.dcdcSimulinkBadge.textContent = "Pulse Generator";
+
+    const shortPulse =
+      "Use in a Simulink <strong>Pulse Generator</strong> (open-loop).";
+
     if (isBuck) {
       els.badge.textContent = "Buck";
-      setText(els.navTagline, "CCM Buck Design");
-      setText(
-        els.heroLead,
-        "Size inductors, capacitors, and load for ideal Buck converters. Get Simulink Pulse Generator settings instantly."
-      );
-      setText(els.footerCopy, "Simverse Phase I · Ideal CCM Buck · Frontend only");
-      if (els.dcdcHint) {
-        els.dcdcHint.textContent =
-          "Calculations update as you type. Ideal CCM equations — no losses, continuous conduction.";
-      }
-      if (els.dcdcSimulinkNote) {
-        els.dcdcSimulinkNote.innerHTML =
-          "Map these values into a Simulink <strong>Pulse Generator</strong> block for open-loop switching.";
-      }
+      setText(els.navTagline, "CCM Buck");
+      setText(els.heroLead, "Ideal buck converter sizing — L, C, R and pulse settings.");
+      setText(els.footerCopy, "Simverse · Buck");
+      if (els.dcdcHint) els.dcdcHint.textContent = "Ideal CCM · Vₒ < Vᵢₙ";
+      if (els.dcdcSimulinkNote) els.dcdcSimulinkNote.innerHTML = shortPulse;
     } else if (isBoost) {
       els.badge.textContent = "Boost";
-      setText(els.navTagline, "CCM Boost Design");
-      setText(
-        els.heroLead,
-        "Size inductors, capacitors, and load for ideal Boost converters. Get Simulink Pulse Generator settings instantly."
-      );
-      setText(els.footerCopy, "Simverse Phase I · Ideal CCM Boost · Frontend only");
-      if (els.dcdcHint) {
-        els.dcdcHint.textContent =
-          "Calculations update as you type. Ideal CCM equations — no losses, continuous conduction.";
-      }
-      if (els.dcdcSimulinkNote) {
-        els.dcdcSimulinkNote.innerHTML =
-          "Map these values into a Simulink <strong>Pulse Generator</strong> block for open-loop switching.";
-      }
+      setText(els.navTagline, "CCM Boost");
+      setText(els.heroLead, "Ideal boost converter sizing — L, C, R and pulse settings.");
+      setText(els.footerCopy, "Simverse · Boost");
+      if (els.dcdcHint) els.dcdcHint.textContent = "Ideal CCM · Vₒ > Vᵢₙ";
+      if (els.dcdcSimulinkNote) els.dcdcSimulinkNote.innerHTML = shortPulse;
     } else if (isBb) {
-      els.badge.textContent = "Inverting · CCM";
-      setText(els.navTagline, "CCM Buck-Boost Design");
-      setText(
-        els.heroLead,
-        "Size L, C, and load for an ideal inverting buck-boost. Enter |Vₒ| (magnitude); polarity is inverted relative to Vᵢₙ."
-      );
-      setText(
-        els.footerCopy,
-        "Simverse Phase I · Ideal CCM Buck-Boost · Frontend only"
-      );
-      if (els.dcdcHint) {
-        els.dcdcHint.textContent =
-          "Ideal CCM inverting buck-boost (1 switch + 1 diode). Vₒ is magnitude; real polarity is inverted. Step-up and step-down allowed.";
-      }
-      if (els.dcdcSimulinkNote) {
-        els.dcdcSimulinkNote.innerHTML =
-          "Map these values into a Simulink <strong>Pulse Generator</strong> for the single active switch (open-loop).";
-      }
+      els.badge.textContent = "Inverting";
+      setText(els.navTagline, "CCM Buck-Boost");
+      setText(els.heroLead, "Inverting buck-boost — enter |Vₒ|; step-up or step-down.");
+      setText(els.footerCopy, "Simverse · Buck-Boost");
+      if (els.dcdcHint) els.dcdcHint.textContent = "Ideal CCM · inverting · |Vₒ|";
+      if (els.dcdcSimulinkNote) els.dcdcSimulinkNote.innerHTML = shortPulse;
     } else if (isNibb) {
       els.badge.textContent =
         nibbDrive === NIBB_DRIVE.SIMUL ? "Both PWM" : "Multi-mode";
-      setText(els.navTagline, "CCM NIBB Design");
-      setText(
-        els.heroLead,
-        "Non-inverting buck-boost with two drive strategies: Multi-mode (S₂ OFF / S₁ ON by voltages) or Both PWM (simultaneous S₁+S₂, gain D/(1−D))."
-      );
-      setText(els.footerCopy, "Simverse Phase I · Ideal CCM NIBB · Frontend only");
-      if (els.dcdcHint) {
-        els.dcdcHint.textContent =
-          "Choose NIBB drive: Multi-mode (efficient scheduling) or Both PWM (both switches same duty always). Ideal CCM, no losses.";
-      }
+      setText(els.navTagline, "CCM NIBB");
+      setText(els.heroLead, "Non-inverting buck-boost — multi-mode or both-PWM drive.");
+      setText(els.footerCopy, "Simverse · NIBB");
+      if (els.dcdcHint) els.dcdcHint.textContent = "Ideal CCM · non-inverting";
       if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = false;
       if (els.nibbModePanel) els.nibbModePanel.hidden = false;
     } else if (isSepic) {
-      els.badge.textContent = "SEPIC · CCM";
-      setText(els.navTagline, "CCM SEPIC Design");
-      setText(
-        els.heroLead,
-        "Size L₁, L₂, coupling Cₛ, and output Cₒ for an ideal non-inverting SEPIC. Step-up and step-down with common ground — same inputs as Buck/Boost."
-      );
-      setText(els.footerCopy, "Simverse Phase I · Ideal CCM SEPIC · Frontend only");
-      if (els.dcdcHint) {
-        els.dcdcHint.textContent =
-          "Ideal CCM SEPIC — non-inverting, step-up or step-down. L₁ = L₂ when the same ΔIₗ is used. Cₛ and Cₒ use ΔVₒ. Live updates as you type.";
-      }
-      if (els.dcdcSimulinkNote) {
-        els.dcdcSimulinkNote.innerHTML =
-          "Map these values into a Simulink <strong>Pulse Generator</strong> for the SEPIC MOSFET/switch (open-loop CCM).";
-      }
-    }
-
-    if (!isNibb) {
-      if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = true;
-      if (els.nibbModePanel) els.nibbModePanel.hidden = true;
-      if (els.outDLabel) els.outDLabel.textContent = "Duty Cycle D";
-      if (els.dcdcSimulinkBadge) els.dcdcSimulinkBadge.textContent = "Pulse Generator";
+      els.badge.textContent = "SEPIC";
+      setText(els.navTagline, "CCM SEPIC");
+      setText(els.heroLead, "Ideal SEPIC — L₁, L₂, Cₛ, Cₒ. Step-up or step-down.");
+      setText(els.footerCopy, "Simverse · SEPIC");
+      if (els.dcdcHint) els.dcdcHint.textContent = "Ideal CCM · non-inverting · L₁ = L₂";
+      if (els.dcdcSimulinkNote) els.dcdcSimulinkNote.innerHTML = shortPulse;
+      if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = false;
     }
   }
 
+  /** Sync exclusive active state across all main topology buttons. */
+  function syncTopoButtons(activeId) {
+    const buttons = document.querySelectorAll(
+      ".topo-picker .topo-btn[data-topology]"
+    );
+    buttons.forEach((btn) => {
+      const id = btn.getAttribute("data-topology");
+      const on = id === activeId;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+  }
+
   function setTopology(next) {
+    if (!next || !Object.values(TOPOLOGY).includes(next)) return;
+
     topology = next;
     const isBuck = next === TOPOLOGY.BUCK;
     const isBoost = next === TOPOLOGY.BOOST;
@@ -1573,93 +1545,68 @@
     const isCharge = next === TOPOLOGY.CHARGE;
     const isDcdc = isBuck || isBoost || isBb || isNibb || isSepic;
 
-    els.btnBuck.classList.toggle("is-active", isBuck);
-    els.btnBoost.classList.toggle("is-active", isBoost);
-    els.btnBuckBoost.classList.toggle("is-active", isBb);
-    els.btnNibb.classList.toggle("is-active", isNibb);
-    if (els.btnSepic) {
-      els.btnSepic.classList.toggle("is-active", isSepic);
-      els.btnSepic.setAttribute("aria-pressed", String(isSepic));
-    }
-    els.btnSemi.classList.toggle("is-active", isSemi);
-    els.btnFull.classList.toggle("is-active", isFull);
-    if (els.btnCharge) {
-      els.btnCharge.classList.toggle("is-active", isCharge);
-      els.btnCharge.setAttribute("aria-pressed", String(isCharge));
-    }
-    els.btnBuck.setAttribute("aria-pressed", String(isBuck));
-    els.btnBoost.setAttribute("aria-pressed", String(isBoost));
-    els.btnBuckBoost.setAttribute("aria-pressed", String(isBb));
-    els.btnNibb.setAttribute("aria-pressed", String(isNibb));
-    els.btnSemi.setAttribute("aria-pressed", String(isSemi));
-    els.btnFull.setAttribute("aria-pressed", String(isFull));
+    // Exclusive single selection (Buck, Boost, SEPIC, … one at a time)
+    syncTopoButtons(next);
 
-    els.viewDcdc.hidden = !isDcdc;
-    els.viewSemi.hidden = !isSemi;
-    els.viewFull.hidden = !isFull;
-    if (els.viewCharge) els.viewCharge.hidden = !isCharge;
+    // Hide all views first, then show only the selected one
+    if (els.viewDcdc) els.viewDcdc.hidden = true;
+    if (els.viewSemi) els.viewSemi.hidden = true;
+    if (els.viewFull) els.viewFull.hidden = true;
+    if (els.viewCharge) els.viewCharge.hidden = true;
+
+    if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = true;
+    if (els.nibbModePanel) els.nibbModePanel.hidden = true;
+    if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = true;
 
     if (isSemi) {
-      setText(els.navTagline, "1-φ Semi-Converter Design");
-      setText(els.heroEyebrow, "Power Electronics · AC–DC Half Controlled");
-      setText(
-        els.heroLead,
-        "Analyse a single-phase symmetrical semi-converter with R or RL load. Live average/RMS voltage, form factor, and SCR gate timing."
-      );
-      setText(
-        els.footerCopy,
-        "Simverse Phase I · 1-φ Semi-Converter · Frontend only"
-      );
+      els.viewSemi.hidden = false;
+      setText(els.navTagline, "1-φ Semi");
+      setText(els.heroEyebrow, "Power Electronics · AC–DC");
+      setText(els.heroLead, "Single-phase semi-converter — average/RMS voltage and gate timing.");
+      setText(els.footerCopy, "Simverse · Semi");
       setSemiLoadType(semiLoadType);
       return;
     }
 
     if (isFull) {
-      setText(els.navTagline, "1-φ Full Converter Design");
-      setText(els.heroEyebrow, "Power Electronics · AC–DC Fully Controlled");
-      setText(
-        els.heroLead,
-        "Analyse a single-phase fully controlled bridge (4 SCR) with R or RL load. Live Vₒ laws, two-quadrant RL mode, and diagonal-pair gate timing."
-      );
-      setText(
-        els.footerCopy,
-        "Simverse Phase I · 1-φ Full Converter · Frontend only"
-      );
+      els.viewFull.hidden = false;
+      setText(els.navTagline, "1-φ Full");
+      setText(els.heroEyebrow, "Power Electronics · AC–DC");
+      setText(els.heroLead, "Fully controlled bridge (4 SCR) — R / RL, rectifier or inverter.");
+      setText(els.footerCopy, "Simverse · Full");
       setFullLoadType(fullLoadType);
       return;
     }
 
     if (isCharge) {
-      setText(els.navTagline, "Charging Circuit (Beginner)");
-      setText(els.heroEyebrow, "Power Electronics · Transformer + Rectifier + Buck");
-      setText(
-        els.heroLead,
-        "Beginner design flow: secondary voltage and winding ratio, DC after rectifier, then buck duty / L / C and Simulink pulse settings."
-      );
-      setText(
-        els.footerCopy,
-        "Simverse · Charging Circuit (Beginner) · Frontend only"
-      );
+      els.viewCharge.hidden = false;
+      setText(els.navTagline, "Charging Circuit");
+      setText(els.heroEyebrow, "Power Electronics · AC–DC supply");
+      setText(els.heroLead, "Transformer → rectifier → buck — beginner design equations.");
+      setText(els.footerCopy, "Simverse · Charge");
       updateFormulas();
       recomputeCharge();
       return;
     }
 
-    setDcdcChrome();
+    if (isDcdc) {
+      els.viewDcdc.hidden = false;
+      setDcdcChrome();
 
-    const vin = parseFloat(els.vin.value);
-    const vout = parseFloat(els.vout.value);
-    if (isBuck && Number.isFinite(vin) && Number.isFinite(vout) && vout > vin) {
-      els.vout.value = "12";
-      els.vin.value = "24";
-    }
-    if (isBoost && Number.isFinite(vin) && Number.isFinite(vout) && vout < vin) {
-      els.vin.value = "12";
-      els.vout.value = "24";
-    }
+      const vin = parseFloat(els.vin.value);
+      const vout = parseFloat(els.vout.value);
+      if (isBuck && Number.isFinite(vin) && Number.isFinite(vout) && vout > vin) {
+        els.vout.value = "12";
+        els.vin.value = "24";
+      }
+      if (isBoost && Number.isFinite(vin) && Number.isFinite(vout) && vout < vin) {
+        els.vin.value = "12";
+        els.vout.value = "24";
+      }
 
-    updateFormulas();
-    recomputeDcdc();
+      updateFormulas();
+      recomputeDcdc();
+    }
   }
 
   /* ——— Events ——— */
@@ -1744,21 +1691,31 @@
       });
     }
 
-    els.btnBuck.addEventListener("click", () => setTopology(TOPOLOGY.BUCK));
-    els.btnBoost.addEventListener("click", () => setTopology(TOPOLOGY.BOOST));
-    els.btnBuckBoost.addEventListener("click", () =>
-      setTopology(TOPOLOGY.BUCKBOOST)
-    );
-    els.btnNibb.addEventListener("click", () => setTopology(TOPOLOGY.NIBB));
-    if (els.btnSepic) {
-      els.btnSepic.addEventListener("click", () => setTopology(TOPOLOGY.SEPIC));
-    }
-    els.btnSemi.addEventListener("click", () => setTopology(TOPOLOGY.SEMI));
-    els.btnFull.addEventListener("click", () => setTopology(TOPOLOGY.FULL));
-    if (els.btnCharge) {
-      els.btnCharge.addEventListener("click", () =>
-        setTopology(TOPOLOGY.CHARGE)
-      );
+    // Event delegation: one handler for all main topology buttons (incl. SEPIC)
+    const topoPicker = document.querySelector(".topo-picker");
+    if (topoPicker) {
+      topoPicker.addEventListener("click", (e) => {
+        const btn = e.target.closest(".topo-btn[data-topology]");
+        if (!btn || !topoPicker.contains(btn)) return;
+        e.preventDefault();
+        const id = btn.getAttribute("data-topology");
+        if (id) setTopology(id);
+      });
+    } else {
+      // Fallback if picker markup missing
+      const map = [
+        [els.btnBuck, TOPOLOGY.BUCK],
+        [els.btnBoost, TOPOLOGY.BOOST],
+        [els.btnBuckBoost, TOPOLOGY.BUCKBOOST],
+        [els.btnNibb, TOPOLOGY.NIBB],
+        [els.btnSepic, TOPOLOGY.SEPIC],
+        [els.btnSemi, TOPOLOGY.SEMI],
+        [els.btnFull, TOPOLOGY.FULL],
+        [els.btnCharge, TOPOLOGY.CHARGE],
+      ];
+      map.forEach(([btn, id]) => {
+        if (btn) btn.addEventListener("click", () => setTopology(id));
+      });
     }
     els.btnLoadR.addEventListener("click", () => setSemiLoadType(LOAD.R));
     els.btnLoadRl.addEventListener("click", () => setSemiLoadType(LOAD.RL));

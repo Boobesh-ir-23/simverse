@@ -24,39 +24,32 @@
 
   <main class="page">
     <section class="hero">
-      <p class="eyebrow" id="hero-eyebrow">Power Electronics · Continuous Conduction Mode</p>
+      <p class="eyebrow" id="hero-eyebrow">Power Electronics · Ideal CCM</p>
       <h1 class="hero-title">Converter Design Tool</h1>
       <p class="hero-lead" id="hero-lead">
-        Size inductors, capacitors, and load for ideal Buck and Boost converters.
-        Get Simulink Pulse Generator settings instantly.
+        Size L, C, and load for ideal converters. Live results and Simulink pulse settings.
       </p>
 
-      <div class="topology-toggle" role="group" aria-label="Converter topology">
-        <button type="button" class="topo-btn is-active" data-topology="buck" id="btn-buck" aria-pressed="true">
-          Buck
-        </button>
-        <button type="button" class="topo-btn" data-topology="boost" id="btn-boost" aria-pressed="false">
-          Boost
-        </button>
-        <button type="button" class="topo-btn" data-topology="buckboost" id="btn-buckboost" aria-pressed="false">
-          Buck-Boost
-        </button>
-        <button type="button" class="topo-btn" data-topology="nibb" id="btn-nibb" aria-pressed="false">
-          NIBB
-        </button>
-        <button type="button" class="topo-btn" data-topology="sepic" id="btn-sepic" aria-pressed="false">
-          SEPIC
-        </button>
-        <button type="button" class="topo-btn" data-topology="semi" id="btn-semi" aria-pressed="false">
-          Semi
-        </button>
-        <button type="button" class="topo-btn" data-topology="full" id="btn-full" aria-pressed="false">
-          Full
-        </button>
-        <button type="button" class="topo-btn" data-topology="charge" id="btn-charge" aria-pressed="false">
-          Charging
-        </button>
-      </div>
+      <nav class="topo-picker" aria-label="Select converter">
+        <div class="topo-group">
+          <p class="topo-group-label">DC–DC</p>
+          <div class="topology-toggle topology-toggle-main" id="topo-dcdc" role="group" aria-label="DC–DC topologies">
+            <button type="button" class="topo-btn is-active" data-topology="buck" id="btn-buck" aria-pressed="true">Buck</button>
+            <button type="button" class="topo-btn" data-topology="boost" id="btn-boost" aria-pressed="false">Boost</button>
+            <button type="button" class="topo-btn" data-topology="buckboost" id="btn-buckboost" aria-pressed="false">Buck-Boost</button>
+            <button type="button" class="topo-btn" data-topology="nibb" id="btn-nibb" aria-pressed="false">NIBB</button>
+            <button type="button" class="topo-btn" data-topology="sepic" id="btn-sepic" aria-pressed="false">SEPIC</button>
+          </div>
+        </div>
+        <div class="topo-group">
+          <p class="topo-group-label">AC–DC &amp; supply</p>
+          <div class="topology-toggle topology-toggle-main" id="topo-ac" role="group" aria-label="AC–DC topologies">
+            <button type="button" class="topo-btn" data-topology="semi" id="btn-semi" aria-pressed="false">Semi</button>
+            <button type="button" class="topo-btn" data-topology="full" id="btn-full" aria-pressed="false">Full</button>
+            <button type="button" class="topo-btn" data-topology="charge" id="btn-charge" aria-pressed="false">Charge</button>
+          </div>
+        </div>
+      </nav>
     </section>
 
     <!-- ===================== DC–DC (Buck / Boost / BB / NIBB) ===================== -->
@@ -135,9 +128,7 @@
 
           <div id="validation-msg" class="validation" role="alert" hidden></div>
 
-          <p class="hint" id="dcdc-hint">
-            Calculations update as you type. Ideal CCM equations — no losses, continuous conduction.
-          </p>
+          <p class="hint" id="dcdc-hint">Ideal CCM · no losses · live update</p>
         </section>
 
         <div class="results-stack" id="results-dcdc">
@@ -226,7 +217,7 @@
               <span class="badge badge-soft" id="dcdc-simulink-badge">Pulse Generator</span>
             </div>
             <p class="simulink-note" id="dcdc-simulink-note">
-              Map these values into a Simulink <strong>Pulse Generator</strong> block for open-loop switching.
+              Use in a Simulink <strong>Pulse Generator</strong> (open-loop).
             </p>
             <div class="spec-grid spec-grid-3">
               <div class="spec-cell">
@@ -312,9 +303,7 @@
 
           <div id="semi-validation-msg" class="validation" role="alert" hidden></div>
 
-          <p class="hint" id="semi-hint">
-            1-φ symmetrical semi-converter (2 SCR + 2 diode). Ideal switches, continuous conduction for RL.
-          </p>
+          <p class="hint" id="semi-hint">1-φ semi-converter · 2 SCR + 2 diode</p>
         </section>
 
         <div class="results-stack" id="results-semi">
@@ -453,9 +442,7 @@
 
           <div id="full-validation-msg" class="validation" role="alert" hidden></div>
 
-          <p class="hint" id="full-hint">
-            1-φ fully controlled bridge (4 SCR). Ideal switches. R load extinguishes at π; RL assumes continuous conduction.
-          </p>
+          <p class="hint" id="full-hint">1-φ full bridge · 4 SCR</p>
         </section>
 
         <div class="results-stack" id="results-full">
@@ -541,9 +528,7 @@
             <span class="badge" id="charge-badge">Charging</span>
           </div>
 
-          <p class="simulink-note" style="margin-top: 0;">
-            Beginner chain: <strong>230 V AC</strong> → transformer → rectifier + cap → <strong>buck</strong> → V<sub>out</sub>
-          </p>
+          <p class="chain-note">230 V AC → XFMR → rectifier → buck → V<sub>out</sub></p>
 
           <form id="charge-form" class="input-grid" novalidate>
             <label class="field">
@@ -605,9 +590,7 @@
 
           <div id="charge-validation-msg" class="validation" role="alert" hidden></div>
 
-          <p class="hint" id="charge-hint">
-            Simple design: winding ratio = 230 / V<sub>s</sub> · DC ≈ V<sub>s</sub> × 1.414 · buck Vin uses no-load DC (approx minus 2×diode) · D = V<sub>out</sub> / V<sub>in</sub>
-          </p>
+          <p class="hint" id="charge-hint">n = 230/V<sub>s</sub> · V<sub>dc</sub> ≈ V<sub>s</sub>×√2 − 2V<sub>d</sub> · D = V<sub>out</sub>/V<sub>in</sub></p>
         </section>
 
         <div class="results-stack" id="results-charge">
@@ -721,9 +704,9 @@
     </div>
 
     <section class="formula-band" aria-labelledby="formula-heading">
-      <div class="panel-head" style="margin-bottom: var(--sm);">
-        <h2 id="formula-heading" class="panel-title" style="margin-bottom: 0;">Ideal CCM Equations</h2>
-        <button type="button" class="topo-btn topology-toggle-sm" id="btn-toggle-formulas" aria-expanded="true" style="height: 36px; min-width: auto; padding: 0 16px; border: 1px solid var(--hairline); font-size: 11px;">
+      <div class="formula-band-head">
+        <h2 id="formula-heading" class="panel-title">Equations</h2>
+        <button type="button" class="formula-toggle-btn" id="btn-toggle-formulas" aria-expanded="true">
           Hide
         </button>
       </div>
@@ -735,8 +718,8 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <p id="footer-copy">Simverse Phase I · Ideal CCM Buck &amp; Boost · Frontend only</p>
-      <p class="footer-meta">Hosted on Netlify · No data leaves your browser</p>
+      <p id="footer-copy">Simverse · Ideal CCM design tools</p>
+      <p class="footer-meta">Client-side only</p>
     </div>
   </footer>
 
