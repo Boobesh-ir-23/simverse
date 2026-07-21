@@ -640,27 +640,31 @@
   }
 
   function recomputeDcdc() {
-    const inputs = readDcdcInputs();
-    const check = validateDcdc(inputs);
+    try {
+      if (!els.vin || !els.vout) return;
+      const inputs = readDcdcInputs();
+      const check = validateDcdc(inputs);
 
-    if (!check.ok) {
-      showDcdcValidation(check.message);
-      clearDcdcResults();
-      markVoltageFields(
-        /V<sub>o<\/sub>|V<sub>in<\/sub>|Buck|Boost/.test(check.message)
-      );
-      if (topology === TOPOLOGY.NIBB && els.nibbModePanel) {
-        els.nibbModePanel.hidden = false;
+      if (!check.ok) {
+        showDcdcValidation(check.message);
+        clearDcdcResults();
+        markVoltageFields(
+          /V<sub>o<\/sub>|V<sub>in<\/sub>|Buck|Boost/.test(check.message)
+        );
+        if (topology === TOPOLOGY.NIBB && els.nibbModePanel) {
+          els.nibbModePanel.hidden = false;
+        }
+        return;
       }
-      return;
-    }
 
-    hideDcdcValidation();
-    markVoltageFields(false);
-    const result = calculateDcdc(inputs);
-    renderDcdcResults(result);
-    // Keep formula band in sync when NIBB mode changes with Vin/Vo
-    if (topology === TOPOLOGY.NIBB) updateFormulas();
+      hideDcdcValidation();
+      markVoltageFields(false);
+      const result = calculateDcdc(inputs);
+      renderDcdcResults(result);
+      if (topology === TOPOLOGY.NIBB) updateFormulas();
+    } catch (err) {
+      console.error("recomputeDcdc failed:", err);
+    }
   }
 
   /* ——— Shared AC rectifier helpers ——— */
@@ -1017,11 +1021,12 @@
 
   function readChargeInputs() {
     const Vs = parseFloat(els.chVs && els.chVs.value);
-    const Vo = parseFloat(els.chVo.value);
-    const Io = parseFloat(els.chIo.value);
-    const fsw = parseFloat(els.chFsw.value) * 1000; // kHz → Hz
-    const dilPct = parseFloat(els.chDilPct.value);
-    const dvoPct = parseFloat(els.chDvoPct.value);
+    const Vo = parseFloat(els.chVo && els.chVo.value);
+    const Io = parseFloat(els.chIo && els.chIo.value);
+    let fsw = parseFloat(els.chFsw && els.chFsw.value);
+    if (Number.isFinite(fsw)) fsw = fsw * 1000; // kHz → Hz
+    const dilPct = parseFloat(els.chDilPct && els.chDilPct.value);
+    const dvoPct = parseFloat(els.chDvoPct && els.chDvoPct.value);
     let Vdiode = parseFloat(els.chVdiode && els.chVdiode.value);
     if (!Number.isFinite(Vdiode) || Vdiode < 0) Vdiode = 0;
 
@@ -1181,29 +1186,41 @@
   }
 
   function showChargeValidation(message) {
-    els.chargeValidation.innerHTML = message;
-    els.chargeValidation.hidden = false;
-    els.resultsCharge.classList.add("is-error");
+    if (els.chargeValidation) {
+      els.chargeValidation.innerHTML = message;
+      els.chargeValidation.hidden = false;
+    }
+    if (els.resultsCharge) els.resultsCharge.classList.add("is-error");
   }
 
   function hideChargeValidation() {
-    els.chargeValidation.hidden = true;
-    els.chargeValidation.textContent = "";
-    els.resultsCharge.classList.remove("is-error");
+    if (els.chargeValidation) {
+      els.chargeValidation.hidden = true;
+      els.chargeValidation.textContent = "";
+    }
+    if (els.resultsCharge) els.resultsCharge.classList.remove("is-error");
   }
 
   function recomputeCharge() {
-    const inputs = readChargeInputs();
-    const check = validateCharge(inputs);
+    try {
+      if (!els.chVs || !els.chVo || !els.chIo || !els.chFsw) {
+        console.error("Charge inputs missing from DOM");
+        return;
+      }
+      const inputs = readChargeInputs();
+      const check = validateCharge(inputs);
 
-    if (!check.ok) {
-      showChargeValidation(check.message);
-      clearChargeResults();
-      return;
+      if (!check.ok) {
+        showChargeValidation(check.message);
+        clearChargeResults();
+        return;
+      }
+
+      hideChargeValidation();
+      renderChargeResults(calculateCharge(inputs));
+    } catch (err) {
+      console.error("recomputeCharge failed:", err);
     }
-
-    hideChargeValidation();
-    renderChargeResults(calculateCharge(inputs));
   }
 
   /* ——— Formulas ——— */
@@ -1521,93 +1538,137 @@
   /** Sync exclusive active state across all main topology buttons. */
   function syncTopoButtons(activeId) {
     const buttons = document.querySelectorAll(
-      ".topo-picker .topo-btn[data-topology]"
+      "button.topo-btn[data-topology], .topo-picker .topo-btn[data-topology]"
     );
     buttons.forEach((btn) => {
-      const id = btn.getAttribute("data-topology");
+      const id = (btn.getAttribute("data-topology") || "").trim();
       const on = id === activeId;
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-pressed", String(on));
     });
   }
 
+  function showOnlyView(viewEl) {
+    const views = [els.viewDcdc, els.viewSemi, els.viewFull, els.viewCharge];
+    views.forEach((v) => {
+      if (!v) return;
+      if (v === viewEl) {
+        v.hidden = false;
+        v.removeAttribute("hidden");
+        v.style.display = "";
+      } else {
+        v.hidden = true;
+        v.setAttribute("hidden", "");
+      }
+    });
+  }
+
   function setTopology(next) {
-    if (!next || !Object.values(TOPOLOGY).includes(next)) return;
-
-    topology = next;
-    const isBuck = next === TOPOLOGY.BUCK;
-    const isBoost = next === TOPOLOGY.BOOST;
-    const isBb = next === TOPOLOGY.BUCKBOOST;
-    const isNibb = next === TOPOLOGY.NIBB;
-    const isSepic = next === TOPOLOGY.SEPIC;
-    const isSemi = next === TOPOLOGY.SEMI;
-    const isFull = next === TOPOLOGY.FULL;
-    const isCharge = next === TOPOLOGY.CHARGE;
-    const isDcdc = isBuck || isBoost || isBb || isNibb || isSepic;
-
-    // Exclusive single selection (Buck, Boost, SEPIC, … one at a time)
-    syncTopoButtons(next);
-
-    // Hide all views first, then show only the selected one
-    if (els.viewDcdc) els.viewDcdc.hidden = true;
-    if (els.viewSemi) els.viewSemi.hidden = true;
-    if (els.viewFull) els.viewFull.hidden = true;
-    if (els.viewCharge) els.viewCharge.hidden = true;
-
-    if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = true;
-    if (els.nibbModePanel) els.nibbModePanel.hidden = true;
-    if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = true;
-
-    if (isSemi) {
-      els.viewSemi.hidden = false;
-      setText(els.navTagline, "1-φ Semi");
-      setText(els.heroEyebrow, "Power Electronics · AC–DC");
-      setText(els.heroLead, "Single-phase semi-converter — average/RMS voltage and gate timing.");
-      setText(els.footerCopy, "Simverse · Semi");
-      setSemiLoadType(semiLoadType);
-      return;
-    }
-
-    if (isFull) {
-      els.viewFull.hidden = false;
-      setText(els.navTagline, "1-φ Full");
-      setText(els.heroEyebrow, "Power Electronics · AC–DC");
-      setText(els.heroLead, "Fully controlled bridge (4 SCR) — R / RL, rectifier or inverter.");
-      setText(els.footerCopy, "Simverse · Full");
-      setFullLoadType(fullLoadType);
-      return;
-    }
-
-    if (isCharge) {
-      els.viewCharge.hidden = false;
-      setText(els.navTagline, "Charging Circuit");
-      setText(els.heroEyebrow, "Power Electronics · AC–DC supply");
-      setText(els.heroLead, "Transformer → rectifier → buck — beginner design equations.");
-      setText(els.footerCopy, "Simverse · Charge");
-      updateFormulas();
-      recomputeCharge();
-      return;
-    }
-
-    if (isDcdc) {
-      els.viewDcdc.hidden = false;
-      setDcdcChrome();
-
-      const vin = parseFloat(els.vin.value);
-      const vout = parseFloat(els.vout.value);
-      if (isBuck && Number.isFinite(vin) && Number.isFinite(vout) && vout > vin) {
-        els.vout.value = "12";
-        els.vin.value = "24";
-      }
-      if (isBoost && Number.isFinite(vin) && Number.isFinite(vout) && vout < vin) {
-        els.vin.value = "12";
-        els.vout.value = "24";
+    try {
+      const id = String(next || "")
+        .trim()
+        .toLowerCase();
+      const valid = Object.values(TOPOLOGY);
+      if (!id || valid.indexOf(id) === -1) {
+        console.warn("Unknown topology:", next);
+        return;
       }
 
-      updateFormulas();
-      recomputeDcdc();
+      topology = id;
+      const isBuck = id === TOPOLOGY.BUCK;
+      const isBoost = id === TOPOLOGY.BOOST;
+      const isBb = id === TOPOLOGY.BUCKBOOST;
+      const isNibb = id === TOPOLOGY.NIBB;
+      const isSepic = id === TOPOLOGY.SEPIC;
+      const isSemi = id === TOPOLOGY.SEMI;
+      const isFull = id === TOPOLOGY.FULL;
+      const isCharge = id === TOPOLOGY.CHARGE;
+      const isDcdc = isBuck || isBoost || isBb || isNibb || isSepic;
+
+      // Exclusive single selection
+      syncTopoButtons(id);
+
+      if (els.nibbDriveWrap) els.nibbDriveWrap.hidden = true;
+      if (els.nibbModePanel) els.nibbModePanel.hidden = true;
+      if (els.sepicExtraPanel) els.sepicExtraPanel.hidden = true;
+
+      if (isSemi) {
+        showOnlyView(els.viewSemi);
+        setText(els.navTagline, "1-φ Semi");
+        setText(els.heroEyebrow, "Power Electronics · AC–DC");
+        setText(
+          els.heroLead,
+          "Single-phase semi-converter — average/RMS voltage and gate timing."
+        );
+        setText(els.footerCopy, "Simverse · Semi");
+        setSemiLoadType(semiLoadType);
+        return;
+      }
+
+      if (isFull) {
+        showOnlyView(els.viewFull);
+        setText(els.navTagline, "1-φ Full");
+        setText(els.heroEyebrow, "Power Electronics · AC–DC");
+        setText(
+          els.heroLead,
+          "Fully controlled bridge (4 SCR) — R / RL, rectifier or inverter."
+        );
+        setText(els.footerCopy, "Simverse · Full");
+        setFullLoadType(fullLoadType);
+        return;
+      }
+
+      if (isCharge) {
+        showOnlyView(els.viewCharge);
+        setText(els.navTagline, "Charging Circuit");
+        setText(els.heroEyebrow, "Power Electronics · AC–DC supply");
+        setText(
+          els.heroLead,
+          "Transformer → rectifier → buck — beginner design equations."
+        );
+        setText(els.footerCopy, "Simverse · Charge");
+        updateFormulas();
+        recomputeCharge();
+        return;
+      }
+
+      if (isDcdc) {
+        showOnlyView(els.viewDcdc);
+        setDcdcChrome();
+
+        if (els.vin && els.vout) {
+          const vin = parseFloat(els.vin.value);
+          const vout = parseFloat(els.vout.value);
+          if (
+            isBuck &&
+            Number.isFinite(vin) &&
+            Number.isFinite(vout) &&
+            vout > vin
+          ) {
+            els.vout.value = "12";
+            els.vin.value = "24";
+          }
+          if (
+            isBoost &&
+            Number.isFinite(vin) &&
+            Number.isFinite(vout) &&
+            vout < vin
+          ) {
+            els.vin.value = "12";
+            els.vout.value = "24";
+          }
+        }
+
+        updateFormulas();
+        recomputeDcdc();
+      }
+    } catch (err) {
+      console.error("setTopology failed:", err);
     }
   }
+
+  // Public API so topology buttons always work (even if binding order changes)
+  window.simverseSetTopology = setTopology;
 
   /* ——— Events ——— */
 
@@ -1691,32 +1752,50 @@
       });
     }
 
-    // Event delegation: one handler for all main topology buttons (incl. SEPIC)
-    const topoPicker = document.querySelector(".topo-picker");
-    if (topoPicker) {
-      topoPicker.addEventListener("click", (e) => {
-        const btn = e.target.closest(".topo-btn[data-topology]");
-        if (!btn || !topoPicker.contains(btn)) return;
-        e.preventDefault();
-        const id = btn.getAttribute("data-topology");
-        if (id) setTopology(id);
-      });
-    } else {
-      // Fallback if picker markup missing
-      const map = [
-        [els.btnBuck, TOPOLOGY.BUCK],
-        [els.btnBoost, TOPOLOGY.BOOST],
-        [els.btnBuckBoost, TOPOLOGY.BUCKBOOST],
-        [els.btnNibb, TOPOLOGY.NIBB],
-        [els.btnSepic, TOPOLOGY.SEPIC],
-        [els.btnSemi, TOPOLOGY.SEMI],
-        [els.btnFull, TOPOLOGY.FULL],
-        [els.btnCharge, TOPOLOGY.CHARGE],
-      ];
-      map.forEach(([btn, id]) => {
-        if (btn) btn.addEventListener("click", () => setTopology(id));
-      });
+    // Topology selection: direct listeners on every button + delegated fallback
+    function onTopoClick(e) {
+      const btn =
+        e.currentTarget && e.currentTarget.getAttribute
+          ? e.currentTarget
+          : e.target && e.target.closest
+            ? e.target.closest("button.topo-btn[data-topology]")
+            : null;
+      if (!btn) return;
+      const id = (btn.getAttribute("data-topology") || "").trim();
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setTopology(id);
     }
+
+    const topoButtons = document.querySelectorAll(
+      "button.topo-btn[data-topology]"
+    );
+    topoButtons.forEach((btn) => {
+      btn.addEventListener("click", onTopoClick);
+    });
+
+    // Also bind by id map (SEPIC / Charge must always work)
+    const topoMap = [
+      [els.btnBuck, TOPOLOGY.BUCK],
+      [els.btnBoost, TOPOLOGY.BOOST],
+      [els.btnBuckBoost, TOPOLOGY.BUCKBOOST],
+      [els.btnNibb, TOPOLOGY.NIBB],
+      [els.btnSepic, TOPOLOGY.SEPIC],
+      [els.btnSemi, TOPOLOGY.SEMI],
+      [els.btnFull, TOPOLOGY.FULL],
+      [els.btnCharge, TOPOLOGY.CHARGE],
+    ];
+    topoMap.forEach(([btn, id]) => {
+      if (!btn) {
+        console.warn("Missing topology button for", id);
+        return;
+      }
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        setTopology(id);
+      });
+    });
     els.btnLoadR.addEventListener("click", () => setSemiLoadType(LOAD.R));
     els.btnLoadRl.addEventListener("click", () => setSemiLoadType(LOAD.RL));
     els.btnFullLoadR.addEventListener("click", () => setFullLoadType(LOAD.R));
@@ -1746,9 +1825,20 @@
 
   /* ——— Init ——— */
 
-  bind();
-  els.fieldLoadL.hidden = true;
-  els.fieldFullLoadL.hidden = true;
-  updateFormulas();
-  recomputeDcdc();
+  function init() {
+    try {
+      bind();
+      if (els.fieldLoadL) els.fieldLoadL.hidden = true;
+      if (els.fieldFullLoadL) els.fieldFullLoadL.hidden = true;
+      setTopology(TOPOLOGY.BUCK);
+    } catch (err) {
+      console.error("Simverse init failed:", err);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();
